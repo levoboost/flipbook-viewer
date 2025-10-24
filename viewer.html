@@ -6,15 +6,14 @@
   <title id="doc-title">Visor (Flipbook)</title>
 
   <!-- PageFlip (efecto “revista”) -->
-  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css
-  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
+  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css?v=1
+  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js?v=1</script>
 
   <!-- PDF.js (para leer el PDF en el navegador) -->
   https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
   <script>
-    // Worker de PDF.js (MISMA versión que el script)
-    // Doc oficial: "Getting Started" de PDF.js
-    // https://mozilla.github.io/pdf.js/getting_started/index.html
+    // Configura el worker de PDF.js (MISMA versión que el script)
+    // Debe definirse antes de llamar a getDocument(...)
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
@@ -44,6 +43,7 @@
       color: #9ecbff; text-decoration: none; border: 1px solid #2a3a5a; padding: 6px 10px;
       border-radius: 6px; background: #111725;
     }
+    .diag {position:fixed; bottom:8px; left:8px; font-size:12px; opacity:.6}
   </style>
 </head>
 <body>
@@ -63,28 +63,36 @@
     </div>
   </div>
 
+  <div class="diag" id="diag"></div>
+
   <script>
     (async function () {
+      const diag = (msg) => { const d = document.getElementById('diag'); d.textContent = msg; };
+
+      // Comprobación de librerías (debe existir pdfjsLib y St.PageFlip)
+      if (!window.pdfjsLib) { alert('No se ha cargado PDF.js'); diag('pdfjsLib: NO'); return; }
+      if (!window.St || !window.St.PageFlip) { alert('No se ha cargado PageFlip'); diag('PageFlip: NO'); return; }
+      diag('Librerías OK');
+
       const qs = new URLSearchParams(location.search);
       const srcEnc   = qs.get('src') || '';
       const titleEnc = qs.get('title') || '';
 
-      const pdfUrl = decodeURIComponent(srcEnc);
+      const pdfUrl = srcEnc ? decodeURIComponent(srcEnc) : '';
       const title  = titleEnc ? decodeURIComponent(titleEnc) : 'Documento';
 
       document.getElementById('t').textContent = title;
       document.title = title;
-      document.getElementById('openNative').href = pdfUrl;
+      document.getElementById('openNative').href = pdfUrl || '#';
 
-      // Comprobación de librerías
-      if (!window.pdfjsLib || !window.St) {
+      if (!pdfUrl) {
         document.getElementById('loader').style.display = 'none';
-        alert('No se han podido cargar las librerías. Reintenta más tarde.');
+        alert('Falta el parámetro "src" con la URL del PDF.');
         return;
       }
 
       try {
-        // 1) Cargar PDF
+        // 1) Carga PDF
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
@@ -117,7 +125,7 @@
           canvas.width = canvas.height = 0;
         }
 
-        // 4) PageFlip con las imágenes renderizadas
+        // 4) PageFlip con imágenes
         const container = document.getElementById('flipbook');
         const pageFlip = new St.PageFlip(container, {
           width: pageW, height: pageH,
