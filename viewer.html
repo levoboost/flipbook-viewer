@@ -5,19 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="doc-title">Visor (Flipbook)</title>
 
-  <!-- PageFlip (SOLO JS: el paquete no trae CSS público) -->
-  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
+  <!-- PageFlip (flipbook) -->
+<script src="/flipbook-viewerip/page-flip.browser.min.js</script>
 
-  <!-- PDF.js (librería + worker de la MISMA versión) -->
-  <script/cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
-  <script>
-    // Asigna el worker a la misma versión (2.16.105)
-    // Listado oficial de ficheros de esa versión: https://cdnjs.com/libraries/pdf.js/2.16.105
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-    }
-  </script>
+<!-- PDF.js (core) -->
+/flipbook-viewer/libs/pdfjs/pdf.min.js</script>
+
+<!-- PDF.js Worker (necesario) -->
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
+  } else {
+    console.error("pdfjsLib no está cargado. Revisa la ruta a /flipbook-viewer/libs/pdfjs/pdf.min.js");
+  }
+</script>
 
   <style>
     :root { --header-h: 52px; }
@@ -41,22 +42,6 @@
             border-radius: 6px; background: #111725; }
     .diag {position:fixed; bottom:8px; left:8px; font-size:12px; opacity:.6}
   </style>
-  
-  <!-- PageFlip (flipbook) -->
-<script src="/flipbook-viewerip/page-flip.browser.min.js</script>
-
-<!-- PDF.js (core) -->
-/flipbook-viewer/libs/pdfjs/pdf.min.js</script>
-
-<!-- PDF.js Worker (necesario) -->
-<script>
-  if (window.pdfjsLib) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
-  } else {
-    console.error("pdfjsLib no está cargado. Revisa la ruta a /flipbook-viewer/libs/pdfjs/pdf.min.js");
-  }
-</script>
-
 </head>
 <body>
   <div class="header">
