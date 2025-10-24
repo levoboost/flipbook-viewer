@@ -12,24 +12,20 @@
     #toolbar button { padding: .45rem .75rem; border: 1px solid #2a3142; background: #182033; color: #e8eaed; border-radius: .4rem; cursor: pointer; }
     #stage { height: calc(100vh - 54px); display: grid; place-items: center; overflow: hidden; }
     #flipbook { width: min(100vw, 1200px); height: calc(min(100vw, 1200px) * 0.70); }
-    #loader { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15,17,21,.9); z-index: 999; }
+    #loader { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15,17,21,.92); z-index: 999; color: #e8eaed; }
     #loader.hidden { opacity: 0; pointer-events: none; transition: opacity .2s ease; }
     #percent { font-size: 2rem; font-weight: 700; }
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
+    #debug { position: fixed; top: 0; left: 0; right: 0; background: #1c2333; color: #cfe2ff; font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 4px 8px; z-index: 2000; }
   </style>
 
-  <!-- ✅ Librerías locales (AHORA SÍ con src="...") -->
-  <script src="flipbook-viewer/libs/pdfjs/pdf.min.js"></pt>
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
-      console.log("[init] PDF.js listo. Worker:", pdfjsLib.GlobalWorkerOptions.workerSrc);
-    } else {
-      console.error("[init] pdfjsLib no cargado — revisa flipbook-viewer/libs/pdfjs/pdf.min.js");
-    }
-  </script>
-  <script src="flipibs/page-flip/page-flip.browser.min.js</script>
+  <!-- ✅ Carga correcta de librerías (rutas según tu estructura actual) -->
+  flipbook-viewer/libs/pdfjs/pdf.min.js</script>
+  flipbook-viewer/libs/page-flip/page-flip.browser.min.js</script>
 </head>
 <body>
+  <div id="debug">[init] Cargando visor…</div>
+
   <div id="toolbar">
     <strong>Flipbook</strong>
     <input id="pdfInput" type="text" placeholder="URL o nombre del PDF (ej.: test.pdf)" />
@@ -49,14 +45,35 @@
   (function(){
     const $ = s => document.querySelector(s);
     const qs = name => new URLSearchParams(location.search).get(name);
-    const show = (el, text) => { el.textContent = text || el.textContent; el.style.display = "block"; };
+    const debug = (msg) => { const el = $("#debug"); el.textContent = String(msg); console.log(msg); };
+    const show = (el, text) => { if (text != null) el.textContent = text; el.style.display = "block"; };
     const hide = (el) => el.style.display = "none";
 
     const loader = $("#loader"), percent = $("#percent"), statusEl = $("#status");
     const flipEl = $("#flipbook"), errorEl = $("#error");
     const input = $("#pdfInput"), btn = $("#btnLoad");
 
-    // Soporta ?src= (prioridad, como tu URL) y ?pdf=
+    debug("[init] Verificando librerías…");
+    const hasPdf = !!window.pdfjsLib;
+    const hasFlip = !!(window.St && St.PageFlip);
+    debug(`[init] pdfjsLib=${hasPdf} | PageFlip=${hasFlip}`);
+
+    // Si pdfjsLib no existe aquí, es que los ... no se cargaron correctamente.
+    if (!hasPdf) {
+      show(errorEl, "No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Verifica 'flipbook-viewer/libs/pdfjs/pdf.min.js' (sin 404) y que el ... está bien escrito.");
+      hide(loader);
+      return;
+    }
+
+    // Configura el worker ahora que pdfjsLib existe
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
+      debug("[init] Configurado worker: " + pdfjsLib.GlobalWorkerOptions.workerSrc);
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Soporta ?src= (prioridad, como tu URL), o ?pdf=
     const pSrc = qs("src");
     const pPdf = qs("pdf");
     const title = qs("title");
@@ -69,18 +86,13 @@
       percent.textContent = Math.max(0, Math.min(100, Math.round(loaded/total*100))) + "%";
     }
     function fail(msg){
-      hide(loader);
-      errorEl.textContent = msg;
-      show(errorEl);
-      console.error(msg);
+      hide(loader); show(errorEl, msg); console.error(msg); debug("[error] " + msg);
     }
 
     async function load(pdfUrl){
       hide(errorEl);
       loader.classList.remove("hidden");
-
-      if (!window.pdfjsLib) { fail("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Verifica 'flipbook-viewer/libs/pdfjs/pdf.min.js' (sin 404)."); return; }
-      if (!(window.St && St.PageFlip)) { console.warn("PageFlip no disponible. Revisa 'flipbook-viewer/libs/page-flip/page-flip.browser.min.js'."); }
+      debug("[load] Iniciando carga: " + pdfUrl);
 
       let task;
       try {
@@ -113,6 +125,8 @@
         await new Promise(res => { probe.onload = res; probe.onerror = res; probe.src = images[0]; });
         const w = probe.naturalWidth || 1000, h = probe.naturalHeight || 1414;
 
+        if (!hasFlip) debug("[warn] PageFlip no detectado; revisa 'flipbook-viewer/libs/page-flip/page-flip.browser.min.js'");
+
         const pageFlip = new St.PageFlip(flipEl, {
           width: w, height: h, size: "stretch",
           minWidth: 315, minHeight: 420, maxWidth: 3000, maxHeight: 4000,
@@ -122,6 +136,7 @@
         pageFlip.loadFromImages(images);
 
         loader.classList.add("hidden");
+        debug("[ok] Flipbook listo con " + images.length + " páginas.");
       } catch (e){
         const hint = (String(e).includes("CORS") || String(e).includes("Network"))
           ? "\n\nSugerencia: si el PDF está en otro dominio, puede requerir CORS. Para descartar, prueba con un PDF local (p.ej., test.pdf)."
@@ -132,8 +147,8 @@
       }
     }
 
-    btn.addEventListener("click", () => {
-      const url = input.value.trim();
+    $("#btnLoad").addEventListener("click", () => {
+      const url = $("#pdfInput").value.trim();
       if (!url) { fail("Indica la ruta del PDF (ej.: test.pdf)."); return; }
       const u = new URL(location.href);
       u.searchParams.set("src", url);
