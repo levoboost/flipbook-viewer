@@ -52,15 +52,15 @@
   #wrap {
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Cambiado a flex-start para permitir scroll */
+    align-items: flex-start;
     height: calc(100dvh - 52px);
     padding: 10px;
-    overflow: auto; /* Permitir scroll */
+    overflow: auto;
   }
   #zoom-container {
-    transform-origin: top center; /* Zoom desde arriba para mejor lectura */
+    transform-origin: top center;
     transition: transform 0.3s ease;
-    margin: 20px 0; /* Margen para mejor visualización */
+    margin: 20px 0;
   }
   #book {
     width: 1000px;
@@ -134,14 +134,13 @@
     <div id="book"></div>
   </div>
 </div>
-<div class="hint">Usa ← → o clic en los bordes para pasar página. Scroll para navegar en zoom. Controles de zoom arriba.</div>
+<div class="hint">Usa ← → o clic en los bordes para pasar página. Scroll para navegar en zoom.</div>
 <div id="loader">Cargando PDF...</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 <script>
 (function() {
-  // Lee ?src= (PDF) y ?title= del querystring
   const params = new URLSearchParams(location.search);
   const pdfUrl = params.get('src');
   const docTitle = params.get('title') || 'Documento';
@@ -160,30 +159,23 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  // Variables para control de zoom - INICIAR EN 75% (mejor legibilidad)
   let currentZoom = 0.75;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3.0;
 
-  // Configurar PDF.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  // Array para almacenar todas las imágenes
   let allImages = [];
 
-  // Función para aplicar zoom usando transform CSS
   function applyZoom() {
     zoomContainer.style.transform = `scale(${currentZoom})`;
     updateZoomDisplay();
-    
-    // Desplazar al top después del zoom para mejor experiencia de lectura
     setTimeout(() => {
       wrap.scrollTop = 0;
     }, 100);
   }
 
-  // Función para manejar el zoom
   function setupZoomControls() {
     const zoomIn = document.getElementById('zoomIn');
     const zoomOut = document.getElementById('zoomOut');
@@ -204,25 +196,20 @@
       }
     });
 
-    // También permitir reset con doble clic en el indicador de zoom
     const zoomLevel = document.getElementById('zoomLevel');
     zoomLevel.addEventListener('dblclick', () => {
-      currentZoom = 0.75; // Reset a 75% (óptimo para lectura)
+      currentZoom = 0.75;
       applyZoom();
     });
   }
 
-  // Función para actualizar la visualización del zoom
   function updateZoomDisplay() {
     const zoomLevel = document.getElementById('zoomLevel');
     zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
-    
-    // Actualizar estado de botones
     document.getElementById('zoomIn').disabled = currentZoom >= MAX_ZOOM;
     document.getElementById('zoomOut').disabled = currentZoom <= MIN_ZOOM;
   }
 
-  // Función para descargar el PDF
   function setupDownloadButton() {
     const downloadBtn = document.getElementById('downloadBtn');
     
@@ -231,21 +218,15 @@
         downloadBtn.textContent = '⏳ Descargando...';
         downloadBtn.disabled = true;
         
-        // Descargar el archivo PDF original
         const response = await fetch(pdfUrl);
         if (!response.ok) throw new Error('Error en la descarga');
         const blob = await response.blob();
         
-        // Crear enlace de descarga
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        
-        // Usar nombre fijo sin acentos
-        const fileName = "Informe_Estrategico_IA_Comercial.pdf";
-        
-        a.download = fileName;
+        a.download = "Informe_Estrategico_IA_Comercial.pdf";
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -264,32 +245,36 @@
           downloadBtn.textContent = '📥 Descargar';
           downloadBtn.disabled = false;
         }, 2000);
-        
         alert('Error al descargar el PDF. Puede intentar descargarlo directamente desde: ' + pdfUrl);
       }
     });
   }
 
-  // Función para navegar con animación de página
+  // FUNCIÓN CORREGIDA - Usar flipPage en lugar de flipNext/flipPrev
   function navigateWithAnimation(direction) {
     if (!flip) return;
     
+    const currentPage = flip.getCurrentPageIndex();
+    let targetPage;
+    
     if (direction === 'next') {
-      flip.flipNext();
+      targetPage = currentPage + 1;
     } else if (direction === 'prev') {
-      flip.flipPrev();
+      targetPage = currentPage - 1;
+    }
+    
+    // Verificar que la página objetivo existe
+    if (targetPage >= 0 && targetPage < allImages.length) {
+      flip.flipPage(targetPage);
     }
   }
 
-  // Carga y renderiza páginas a imagen bajo demanda
   pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
     
-    // Función para renderizar 1 página a PNG (canvas → dataURL)
     const renderPage = async (num) => {
       const page = await pdf.getPage(num);
-      // Aumentar la escala para mejor calidad inicial
-      const viewport = page.getViewport({ scale: 1.5 }); // Aumentado de 1.2 a 1.5
+      const viewport = page.getViewport({ scale: 1.5 });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = viewport.width; 
@@ -305,7 +290,6 @@
     };
 
     try {
-      // Cargar TODAS las páginas primero
       loader.textContent = 'Cargando páginas...';
       
       for (let i = 1; i <= total; i++) {
@@ -314,49 +298,52 @@
         allImages.push(img);
       }
 
-      // Inicializar PageFlip después de cargar todas las imágenes
+      // CONFIGURACIÓN MÁS COMPATIBLE
       flip = new St.PageFlip(container, {
-        width: 1000, // Aumentado de 800 a 1000 para mejor calidad
-        height: 1413, // Aumentado proporcionalmente (1000 * 1.413)
+        width: 1000,
+        height: 1413,
         size: "fixed",
         showCover: true, 
         usePortrait: true,
-        flippingTime: 600,
-        maxShadowOpacity: 0.3,
+        flippingTime: 800, // Animación más lenta para mejor efecto
+        maxShadowOpacity: 0.4, // Sombra más visible
         drawShadow: true,
-        mobileScrollSupport: true,
+        mobileScrollSupport: false, // Desactivar para mejor control
         minWidth: 1000,
         minHeight: 1413,
         maxWidth: 1000,
         maxHeight: 1413,
         autoSize: false,
-        swipeDistance: 30,
+        swipeDistance: 50,
         clickToFlip: true,
         disableFlipByClick: false
       });
 
-      // Cargar todas las imágenes al flipbook
       flip.loadFromImages(allImages);
       
-      // Configurar controles
-      setupZoomControls();
-      setupDownloadButton();
-      
-      // Aplicar zoom inicial de 75%
-      applyZoom();
-      
-      // Ocultar loader
-      loader.style.display = 'none';
+      // CONFIGURAR EVENTOS DESPUÉS DE CARGAR
+      setTimeout(() => {
+        setupZoomControls();
+        setupDownloadButton();
+        applyZoom();
+        loader.style.display = 'none';
+      }, 500);
 
-      // Controles de teclado mejorados - AMBAS DIRECCIONES FUNCIONAN
+      // TECLADO - USAR flipPage DIRECTAMENTE
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          navigateWithAnimation('next');
+          const currentPage = flip.getCurrentPageIndex();
+          if (currentPage < allImages.length - 1) {
+            flip.flipPage(currentPage + 1);
+          }
         }
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          navigateWithAnimation('prev');
+          const currentPage = flip.getCurrentPageIndex();
+          if (currentPage > 0) {
+            flip.flipPage(currentPage - 1);
+          }
         }
         if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
@@ -375,12 +362,28 @@
           }
         }
         if (e.key === '0' && !e.ctrlKey) {
-          currentZoom = 0.75; // Reset a 75%
+          currentZoom = 0.75;
           applyZoom();
         }
       });
 
-      // Doble clic para resetear zoom a 75%
+      // CLIC EN BORDES - USAR flipPage DIRECTAMENTE
+      container.addEventListener('click', (e) => {
+        const rect = container.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const currentPage = flip.getCurrentPageIndex();
+        
+        const edgeWidth = 100;
+        
+        if (clickX > rect.width - edgeWidth && currentPage < allImages.length - 1) {
+          flip.flipPage(currentPage + 1);
+        }
+        else if (clickX < edgeWidth && currentPage > 0) {
+          flip.flipPage(currentPage - 1);
+        }
+      });
+
+      // DOBLE CLIC PARA ZOOM
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -388,34 +391,6 @@
         applyZoom();
       });
 
-      // Clic en áreas específicas para voltear páginas - CORREGIDO
-      container.addEventListener('click', (e) => {
-        const rect = container.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-        
-        // Solo activar en los bordes laterales (primeros y últimos 100px)
-        const edgeWidth = 100;
-        
-        // Si se hace clic en el borde derecho
-        if (clickX > rect.width - edgeWidth) {
-          navigateWithAnimation('next');
-        }
-        // Si se hace clic en el borde izquierdo  
-        else if (clickX < edgeWidth) {
-          navigateWithAnimation('prev');
-        }
-        // Si se hace clic en el centro, no hacer nada (para lectura)
-      });
-
-      // También configurar el evento de clic nativo de PageFlip
-      if (flip && flip.on) {
-        flip.on('flip', (e) => {
-          console.log('Flip event:', e);
-        });
-      }
-
-      // Inicializar estado del zoom
       updateZoomDisplay();
 
     } catch (error) {
