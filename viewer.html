@@ -26,6 +26,18 @@
     }
   </script>
   <script src="lib/page-flip/page-flip.browser.min.js"></script>
+
+<script src="lib/page-flip/page-flip.browser.min.js"></script>
+<script>
+  // Verificación temporal
+  console.log('PageFlip disponible?', typeof PageFlip);
+  if (typeof PageFlip === 'undefined') {
+    console.error('PageFlip NO se cargó correctamente');
+  } else {
+    console.log('PageFlip cargado OK');
+  }
+</script>
+  
 </head>
 
 <body>
