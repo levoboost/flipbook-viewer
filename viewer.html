@@ -100,6 +100,10 @@
   .zoom-btn:hover {
     background: #444;
   }
+  .zoom-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -155,18 +159,23 @@
   function applyZoom() {
     if (!flip) return;
     
+    console.log('Aplicando zoom:', currentZoom);
+    
     // Actualizar el tamaño basado en el zoom
     const baseWidth = 800;
     const baseHeight = 1130;
     
-    const newWidth = baseWidth * currentZoom;
-    const newHeight = baseHeight * currentZoom;
+    const newWidth = Math.round(baseWidth * currentZoom);
+    const newHeight = Math.round(baseHeight * currentZoom);
     
-    // Actualizar el flipbook con el nuevo tamaño
-    flip.updateBounds({
-      width: newWidth,
-      height: newHeight
-    });
+    console.log('Nuevo tamaño:', newWidth, 'x', newHeight);
+    
+    // Forzar actualización del tamaño del contenedor
+    container.style.width = newWidth + 'px';
+    container.style.height = newHeight + 'px';
+    
+    // Actualizar el flipbook
+    flip.update();
     
     updateZoomDisplay();
   }
@@ -178,14 +187,16 @@
 
     zoomIn.addEventListener('click', () => {
       if (currentZoom < MAX_ZOOM) {
-        currentZoom += ZOOM_STEP;
+        currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
+        currentZoom = Math.round(currentZoom * 10) / 10; // Redondear a 1 decimal
         applyZoom();
       }
     });
 
     zoomOut.addEventListener('click', () => {
       if (currentZoom > MIN_ZOOM) {
-        currentZoom -= ZOOM_STEP;
+        currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
+        currentZoom = Math.round(currentZoom * 10) / 10; // Redondear a 1 decimal
         applyZoom();
       }
     });
@@ -228,20 +239,8 @@
         a.style.display = 'none';
         a.href = url;
         
-        // Obtener nombre del archivo de la URL o usar título
-        let fileName = 'documento.pdf';
-        try {
-          const urlObj = new URL(pdfUrl);
-          const pathParts = urlObj.pathname.split('/');
-          const lastPart = pathParts[pathParts.length - 1];
-          if (lastPart && lastPart.includes('.pdf')) {
-            fileName = lastPart;
-          } else {
-            fileName = docTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
-          }
-        } catch (e) {
-          fileName = docTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
-        }
+        // Usar nombre fijo sin acentos
+        const fileName = "Informe_Estrategico_IA_Comercial.pdf";
         
         a.download = fileName;
         document.body.appendChild(a);
@@ -303,9 +302,9 @@
 
       // Inicializar PageFlip después de cargar todas las imágenes
       flip = new St.PageFlip(container, {
-        size: "stretch",
         width: 800,  // Ancho base para A4 vertical
         height: 1130, // Alto base para A4 (1.414 relación)
+        size: "fixed", // Cambiar a fixed para mejor control del zoom
         showCover: true, 
         usePortrait: true, // IMPORTANTE: usar modo retrato
         flippingTime: 600, 
@@ -317,7 +316,7 @@
         minHeight: 565,
         maxWidth: 2000,
         maxHeight: 2828,
-        autoSize: true
+        autoSize: false // Desactivar autoSize para control manual
       });
 
       // Cargar todas las imágenes al flipbook
@@ -337,14 +336,16 @@
         if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom < MAX_ZOOM) {
-            currentZoom += ZOOM_STEP;
+            currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
+            currentZoom = Math.round(currentZoom * 10) / 10;
             applyZoom();
           }
         }
         if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom > MIN_ZOOM) {
-            currentZoom -= ZOOM_STEP;
+            currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
+            currentZoom = Math.round(currentZoom * 10) / 10;
             applyZoom();
           }
         }
