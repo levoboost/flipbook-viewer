@@ -119,7 +119,7 @@
   <div id="header-controls">
     <div class="zoom-controls">
       <button class="zoom-btn" id="zoomOut" title="Zoom Out">-</button>
-      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">100%</span>
+      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">50%</span>
       <button class="zoom-btn" id="zoomIn" title="Zoom In">+</button>
     </div>
     <button class="control-btn" id="downloadBtn" title="Descargar PDF">📥 Descargar</button>
@@ -156,8 +156,8 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  // Variables para control de zoom
-  let currentZoom = 1;
+  // Variables para control de zoom - INICIAR EN 50%
+  let currentZoom = 0.5;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3.0;
@@ -198,7 +198,7 @@
     // También permitir reset con doble clic en el indicador de zoom
     const zoomLevel = document.getElementById('zoomLevel');
     zoomLevel.addEventListener('dblclick', () => {
-      currentZoom = 1;
+      currentZoom = 0.5; // Reset a 50% en lugar de 100%
       applyZoom();
     });
   }
@@ -261,6 +261,17 @@
     });
   }
 
+  // Función para navegar con animación de página
+  function navigateWithAnimation(direction) {
+    if (!flip) return;
+    
+    if (direction === 'next') {
+      flip.flipNext();
+    } else if (direction === 'prev') {
+      flip.flipPrev();
+    }
+  }
+
   // Carga y renderiza páginas a imagen bajo demanda
   pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
@@ -301,15 +312,19 @@
         size: "fixed",
         showCover: true, 
         usePortrait: true,
-        flippingTime: 600, 
-        maxShadowOpacity: 0.2,
+        flippingTime: 600, // Tiempo de animación más largo para mejor efecto
+        maxShadowOpacity: 0.3, // Sombra más pronunciada
         drawShadow: true,
         mobileScrollSupport: true,
         minWidth: 800,
         minHeight: 1130,
         maxWidth: 800,
         maxHeight: 1130,
-        autoSize: false
+        autoSize: false,
+        // Configuraciones adicionales para mejor animación
+        swipeDistance: 30, // Distancia de swipe para activar animación
+        clickToFlip: true, // Permitir clic para voltear
+        disableFlipByClick: false // No desactivar volteo por clic
       });
 
       // Cargar todas las imágenes al flipbook
@@ -319,13 +334,22 @@
       setupZoomControls();
       setupDownloadButton();
       
+      // Aplicar zoom inicial de 50%
+      applyZoom();
+      
       // Ocultar loader
       loader.style.display = 'none';
 
-      // Controles de teclado mejorados
+      // Controles de teclado mejorados - USAR ANIMACIÓN COMPLETA
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') flip.turnToNextPage();
-        if (e.key === 'ArrowLeft') flip.turnToPrevPage();
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateWithAnimation('next');
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateWithAnimation('prev');
+        }
         if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom < MAX_ZOOM) {
@@ -343,32 +367,31 @@
           }
         }
         if (e.key === '0' && !e.ctrlKey) {
-          currentZoom = 1;
+          currentZoom = 0.5; // Reset a 50%
           applyZoom();
         }
       });
 
-      // Doble clic para resetear zoom
+      // Doble clic para resetear zoom a 50%
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        currentZoom = 1;
+        currentZoom = 0.5;
         applyZoom();
       });
 
-      // Prevenir que el clic normal interfiera con el doble clic
-      let clickTimer = null;
+      // Clic simple para voltear páginas con animación
       container.addEventListener('click', (e) => {
-        if (clickTimer) {
-          clearTimeout(clickTimer);
-          clickTimer = null;
-          // Es un doble clic, ya manejado arriba
-          return;
+        const rect = container.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        
+        // Si se hace clic en la mitad derecha, siguiente página
+        // Si se hace clic en la mitad izquierda, página anterior
+        if (clickX > rect.width / 2) {
+          navigateWithAnimation('next');
+        } else {
+          navigateWithAnimation('prev');
         }
-        clickTimer = setTimeout(() => {
-          clickTimer = null;
-          // Cl simple - permitir cambio de página normal
-        }, 300);
       });
 
       // Inicializar estado del zoom
