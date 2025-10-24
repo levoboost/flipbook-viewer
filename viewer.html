@@ -1,35 +1,136 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title id="doc-title">Visor</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flipbook Viewer</title>
+
+
   <style>
-    html,body{height:100%;margin:0}
-    #top{position:fixed;top:0;left:0;right:0;height:48px;background:#111;color:#fff;
-         display:flex;align-items:center;padding:0 12px;font:500 14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;z-index:2}
-    #pdf{position:fixed;top:48px;left:0;right:0;bottom:0;width:100%;height:calc(100% - 48px);border:0}
+    :root { color-scheme: dark; }
+    body{
+      margin:0; background:#111; color:#eee;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial
+    }
+    header{
+      display:flex; align-items:center; gap:.6rem;
+      padding:10px 14px; background:#111; border-bottom:1px solid #222;
+      position:sticky; top:0; z-index:10
+    }
+    header .dot{width:10px;height:10px;border-radius:50%;background:#19a974;display:inline-block}
+    #title{font-size:16px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    #wrap{
+      display:flex; justify-content:center; align-items:stretch;
+      height:calc(100dvh - 50px); padding:10px
+    }
+    #book{ width:min(100%, 1200px); height:100%; }
+    .hint{
+      position:fixed; left:0; right:0; bottom:10px; text-align:center;
+      font-size:12px; color:#aaa; pointer-events:none
+    }
+    a.link{ color:#7cc7ff; text-decoration:none }
+    a.link:hover{ text-decoration:underline }
   </style>
 </head>
 <body>
-  <div id="top"><span id="t"></span></div>
-  <iframe id="pdf" allow="fullscreen"></iframe>
+  <header>
+    <span class="dot" aria-hidden="true"></span>
+    <div id="title">Flipbook</div>
+  </header>
+
+  <div id="wrap">
+    <div id="book" role="region" aria-label="Visor tipo revista"></div>
+  </div>
+  <div class="hint">Consejo: usa las teclas ← → o pulsa sobre los bordes para pasar de página.</div>
+
+  <!-- PDF.js (renderiza el PDF a canvas) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6s</script>
+  <!-- StPageFlip (aplica el efecto de pasar página) -->
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flipjs</script>
 
   <script>
-    (function(){
-      const p = new URLSearchParams(location.search);
-      const src   = p.get('src') || '';
-      const title = p.get('title') || '';
+  (function () {
+    // 1) Leer parámetros: ?src= (URL del PDF) y ?title= (opcional)
+    const params = new URLSearchParams(location.search);
+    const pdfUrl = params.get('src');            // URL del PDF (mejor si viene url-encoded)
+    const docTitle = params.get('title') || 'Documento';
 
-      if (title) {
-        const txt = decodeURIComponent(title);
-        document.getElementById('t').textContent = txt;
-        document.title = txt;
-      }
+    // Pintar título
+    document.getElementById('title').textContent = '📖 ' + docTitle;
 
-      // Cargar el PDF directamente (el navegador lo muestra sin más)
-      document.getElementById('pdf').src = src;
-    })();
+    // Si falta src, mostramos ayuda
+    if (!pdfUrl) {
+      document.getElementById('book').innerHTML = `
+        <div style="padding:2rem;line-height:1.6">
+          Falta el parámetro <code>src</code> con la URL del PDF.<br>
+          Ejemplo de uso:<br>
+          <code>?src=https%3A%2F%2Fejemplo.com%2Farchivo.pdf&amp;title=Mi%20catálogo</code>
+        </div>`;
+      return;
+    }
+
+    // 2) Inicializar Flipbook
+    const container = document.getElementById('book');
+    const flip = new St.PageFlip(container, {
+      size: "stretch",        // se adapta al contenedor
+      width: 1024, height: 700, // dimensiones base (se escalan con "stretch")
+      showCover: true,
+      usePortrait: true,      // cambia a modo "una página" en pantallas estrechas
+      flippingTime: 600,
+      maxShadowOpacity: 0.2,
+    });
+
+    // 3) Configurar PDF.js (worker) y abrir documento
+    const pdfjsLib = window['pdfjsLib'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.min.js';
+
+    pdfjsLib.getDocument({ url: pdfUrl }).promise
+      .then(async (pdf) => {
+        const total = pdf.numPages;
+
+        // Función: renderiza una página a imagen (PNG) usando canvas
+        const renderPageToDataURL = async (num, scale=1.4) => {
+          const page = await pdf.getPage(num);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          return canvas.toDataURL('image/png'); // comprimido (rápido y ligero)
+        };
+
+        // Carga inicial (portada y página 2) para ver algo al instante
+        const images = [];
+        images.push(await renderPageToDataURL(1));
+        if (total >= 2) images.push(await renderPageToDataURL(2));
+        flip.loadFromImages(images);
+
+        // Carga progresiva del resto (3..n) sin bloquear la UI
+        for (let i = 3; i <= total; i++) {
+          renderPageToDataURL(i).then(img => {
+            // append: combinación del array interno con la nueva imagen
+            flip.loadFromImages(flip.images.concat([img]));
+          }).catch(console.error);
+        }
+
+        // Controles de teclado
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowRight') flip.turnToNextPage();
+          if (e.key === 'ArrowLeft')  flip.turnToPrevPage();
+        });
+      })
+      .catch((err) => {
+        container.innerHTML = `
+          <div style="padding:2rem;color:#e66;line-height:1.6">
+            No se pudo abrir el PDF.<br>
+            <small>${(err && err.message) ? err.message : err}</small><br><br>
+            Comprueba que el enlace es válido y que el archivo permite acceso por enlace.
+          </div>`;
+        console.error(err);
+      });
+  })();
   </script>
 </body>
 </html>
