@@ -18,16 +18,19 @@
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
-  <!-- Librerías: AJUSTADAS a tu estructura actual -->
-  <script src="flipbook-viewer/libs/pdfjsscript>
+  <!-- 🔧 Librerías locales — OJO: ahora sí con src="..." y rutas correctas -->
+  flipbook-viewer/libs/pdfjs/pdf.min.js</script>
   <script>
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
+      console.log("[init] PDF.js listo. Worker:", pdfjsLib.GlobalWorkerOptions.workerSrc);
     } else {
       console.error("[init] pdfjsLib no cargado — revisa flipbook-viewer/libs/pdfjs/pdf.min.js");
     }
   </script>
-  <script src="flipbook-viewer/libs/page-flip/page-flip.browser.min.js"></script>
+  flipbook-viewer/libs/page-flip/page-flip.browser.min.js</script>
+</head>
+<body>
   <div id="toolbar">
     <strong>Flipbook</strong>
     <input id="pdfInput" type="text" placeholder="URL o nombre del PDF (ej.: test.pdf)" />
@@ -54,7 +57,7 @@
     const flipEl = $("#flipbook"), errorEl = $("#error");
     const input = $("#pdfInput"), btn = $("#btnLoad");
 
-    // Soporta ?src= (prioridad) y ?pdf=
+    // Soporta ?src= (prioridad, como tu URL) y ?pdf=
     const pSrc = qs("src");
     const pPdf = qs("pdf");
     const title = qs("title");
@@ -134,8 +137,8 @@
       const url = input.value.trim();
       if (!url) { fail("Indica la ruta del PDF (ej.: test.pdf)."); return; }
       const u = new URL(location.href);
-      u.searchParams.set("src", url);            // priorizamos src
-      u.searchParams.set("v", Date.now().toString().slice(-6)); // bust caché
+      u.searchParams.set("src", url);
+      u.searchParams.set("v", Date.now().toString().slice(-6)); // evita caché
       location.href = u.toString();
     });
 
