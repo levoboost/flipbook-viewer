@@ -12,21 +12,20 @@
     #toolbar button { padding: .45rem .75rem; border: 1px solid #2a3142; background: #182033; color: #e8eaed; border-radius: .4rem; cursor: pointer; }
     #stage { height: calc(100vh - 54px); display: grid; place-items: center; overflow: hidden; }
     #flipbook { width: min(100vw, 1200px); height: calc(min(100vw, 1200px) * 0.70); }
-    #loader { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15,17,21,.92); z-index: 999; color: #e8eaed; }
-    #loader.hidden { opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    #loader { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15,17,21,.92); z-index: 999; color: #e8eaed; transition: opacity .25s ease; }
+    #loader.hidden { opacity: 0; pointer-events: none; }
     #percent { font-size: 2rem; font-weight: 700; }
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
+  <!-- Librerías -->
   <script src="lib/pdfjs/pdf.min.js"></script>
   <script>
-    // Configura el worker de PDF.js (misma versión que pdf.min.js)
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js";
     }
   </script>
   <script src="lib/page-flip/page-flip.browser.min.js"></script>
-
 </head>
 
 <body>
@@ -59,7 +58,6 @@
       const flipEl = $("#flipbook"), errorEl = $("#error");
       const input = $("#pdfInput"), btn = $("#btnLoad");
 
-      // Parámetros: prioridad a ?src=, alternativa ?pdf=
       const pSrc = qs("src");
       const pPdf = qs("pdf");
       const title = qs("title");
@@ -83,17 +81,15 @@
         hideError();
         loader.classList.remove("hidden");
 
-        // Verificaciones de dependencias (evita pantalla negra)
         if (!window.pdfjsLib) {
-          showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Revisa <script src=\"lib/pdfjs/pdf.min.js\"></script> y que no da 404.");
+          showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Revisa lib/pdfjs/pdf.min.js.");
           return;
         }
-        if (!(window.St && St.PageFlip)) {
-          showError("PageFlip no está disponible. Revisa <script src=\"lib/page-flip/page-flip.browser.min.js\"></script>.");
+        if (!window.PageFlip) {
+          showError("PageFlip no está disponible. Revisa lib/page-flip/page-flip.browser.min.js.");
           return;
         }
 
-        // Asegura el worker (por si el bloque de <head> aún no lo fijó)
         try { pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js"; } catch {}
 
         let task;
@@ -126,24 +122,24 @@
           statusEl.textContent = "Preparando flipbook…";
           flipEl.innerHTML = "";
 
-          // Usa tamaño de la primera página para inicializar PageFlip
           const probe = new Image();
           await new Promise(res => { probe.onload = res; probe.onerror = res; probe.src = images[0]; });
           const w = probe.naturalWidth || 1000;
           const h = probe.naturalHeight || 1414;
 
-          const pageFlip = new St.PageFlip(flipEl, {
+          const pageFlip = new PageFlip(flipEl, {
             width: w, height: h, size: "stretch",
             minWidth: 315, minHeight: 420, maxWidth: 3000, maxHeight: 4000,
             showCover: false, mobileScrollSupport: true, usePortrait: true,
-            disableFlipByClick: false, flippingTime: 600, maxShadowOpacity: .3, drawShadow: true, autoSize: true
+            disableFlipByClick: false, flippingTime: 600, maxShadowOpacity: .3,
+            drawShadow: true, autoSize: true
           });
           pageFlip.loadFromImages(images);
 
           loader.classList.add("hidden");
         } catch (e) {
           const hint = (String(e).includes("CORS") || String(e).includes("Network"))
-            ? "\n\nSugerencia: si el PDF está en otro dominio, puede requerir CORS. Para descartar, prueba con un PDF local (p.ej., test.pdf en la raíz)."
+            ? "\n\nSugerencia: si el PDF está en otro dominio, puede requerir CORS. Prueba con un PDF local (p.ej., test.pdf en la raíz)."
             : "";
           showError("No se pudo cargar/renderizar el PDF:\n" + (e && e.message ? e.message : String(e)) + hint);
         } finally {
@@ -156,7 +152,7 @@
         if (!url) { showError("Indica la ruta del PDF (ej.: test.pdf)."); return; }
         const u = new URL(location.href);
         u.searchParams.set("src", url);
-        u.searchParams.set("v", Date.now().toString().slice(-6)); // evita caché
+        u.searchParams.set("v", Date.now().toString().slice(-6));
         location.href = u.toString();
       });
 
@@ -171,3 +167,4 @@
   </noscript>
 </body>
 </html>
+
