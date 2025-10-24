@@ -6,12 +6,16 @@
   <title id="doc-title">Visor (Flipbook)</title>
 
   <!-- PageFlip (efecto revista) -->
-  <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/distlivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
+  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css
+  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
 
   <!-- PDF.js (para leer y dibujar el PDF en imágenes) -->
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"
-          integrity="sha512-rH3oKbO0dbJ8dUf6N2aI2n2m2c21oWCBK3c+uK2wKqkGxge: documentación de PDF.js (prebuilt/CDN)  [1](https://mozilla.github.io/pdf.js/getting_started/index.html)
+  https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
+  <script>
+    // Configura el worker de PDF.js (recomendado por PDF.js)
+    // Doc: mozilla/pdf.js "Getting Started" y Wiki de viewer options
+    // https://mozilla.github.io/pdf.js/getting_started/index.html
+    // https://github.com/mozilla/pdf.js/wiki/Viewer-options
     window.addEventListener('DOMContentLoaded', () => {
       if (window['pdfjsLib']) {
         pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -27,20 +31,17 @@
       position: fixed; inset: 0 0 auto 0; height: var(--header-h);
       display: flex; align-items: center; gap: 12px;
       padding: 0 14px; background: #0b0d12; border-bottom: 1px solid #1c2230;
-      font: 500 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index: 2;
+      font: 500 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; z-index: 2;
     }
     .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .main  {
-      position: fixed; inset: var(--header-h) 0 0 0; display: grid; place-items: center;
-    }
+    .main  { position: fixed; inset: var(--header-h) 0 0 0; display: grid; place-items: center; }
     #flipbook { width: min(100vw, 1200px); height: calc(min(100vw, 1200px) * 1.4); }
     .hint { opacity: .8; font-size: 12px; margin-left: auto; }
     .loader {
       position: absolute; inset: 0; display: grid; place-items: center;
       background: #0f1115; z-index: 1; font: 500 14px system-ui, Segoe UI, Roboto;
     }
-    .progress { margin-top: 8px; color: #b5c3ff; font-size: 12px; }
+    .progress { margin-top: 8px; color: #b5c3ff; font-size: 12px; text-align:center; }
     a.btn {
       color: #9ecbff; text-decoration: none; border: 1px solid #2a3a5a; padding: 6px 10px;
       border-radius: 6px; background: #111725;
@@ -67,36 +68,40 @@
   <script>
     (async function () {
       const qs = new URLSearchParams(location.search);
-      const srcEnc = qs.get('src') || '';
+      const srcEnc   = qs.get('src') || '';
       const titleEnc = qs.get('title') || '';
-      const pdfUrl  = decodeURIComponent(srcEnc);
-      const title   = titleEnc ? decodeURIComponent(titleEnc) : 'Documento';
+
+      // URL del PDF (proxiada por tu Worker) y título
+      const pdfUrl = decodeURIComponent(srcEnc);
+      const title  = titleEnc ? decodeURIComponent(titleEnc) : 'Documento';
 
       document.getElementById('t').textContent = title;
       document.title = title;
       document.getElementById('openNative').href = pdfUrl;
 
+      // Comprobación de librerías cargadas: PDF.js y PageFlip
       if (!window['pdfjsLib'] || !window['St']) {
+        document.getElementById('loader').style.display = 'none';
         alert('No se han podido cargar las librerías. Reintenta más tarde.');
         return;
       }
 
       try {
-        // 1) Carga el PDF (desde tu Worker con CORS abierto)
+        // 1) Carga del PDF (desde tu Worker con CORS abierto)
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
-        // 2) Define tamaño base a partir de la primera página (mantiene proporción)
+        // 2) Tamaño base segun la primera página (proporción)
         const firstPage = await pdf.getPage(1);
         const firstViewport = firstPage.getViewport({ scale: 1 });
-        const ratio = firstViewport.height / firstViewport.width; // alto/anchura
+        const ratio = firstViewport.height / firstViewport.width;
 
-        // Ajusta el tamaño visual del flipbook a la ventana disponible
+        // Ajusta tamaño visual del flipbook
         const maxW = Math.min(window.innerWidth, 1200);
-        const pageW = Math.max(700, Math.floor(maxW * 0.9)); // ancho por página
+        const pageW = Math.max(700, Math.floor(maxW * 0.9));
         const pageH = Math.floor(pageW * ratio);
 
-        // 3) Renderiza cada página a imagen (DataURL) con PDF.js
+        // 3) Renderiza cada página a imagen (PNG) con PDF.js
         const images = [];
         const progressEl = document.getElementById('progress');
 
@@ -106,23 +111,19 @@
 
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d', { willReadFrequently: false });
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
 
           await page.render({ canvasContext: ctx, viewport }).promise;
 
-          // Convierte a imagen (PNG)
-          const dataUrl = canvas.toDataURL('image/png');
-          images.push(dataUrl);
-
-          // Progreso
+          images.push(canvas.toDataURL('image/png'));
           progressEl.textContent = Math.round((n / pdf.numPages) * 100) + '%';
 
-          // Libera memoria
+          // liberar memoria
           canvas.width = canvas.height = 0;
         }
 
-        // 4) Inicializa PageFlip y carga las imágenes renderizadas
+        // 4) Inicializa PageFlip y carga las imágenes
         const container = document.getElementById('flipbook');
         const pageFlip = new St.PageFlip(container, {
           width: pageW, height: pageH,
@@ -156,8 +157,7 @@
 
       } catch (e) {
         document.getElementById('loader').style.display = 'none';
-        alert('No se pudo generar el flipbook. Abre el PDF con el botón "Abrir PDF".');
-        // (Si quieres, aquí puedes hacer fallback a un <iframe> con el PDF)
+        alert('No se pudo generar el flipbook. Usa el botón "Abrir PDF".');
       }
     })();
   </script>
