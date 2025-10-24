@@ -41,6 +41,22 @@
             border-radius: 6px; background: #111725; }
     .diag {position:fixed; bottom:8px; left:8px; font-size:12px; opacity:.6}
   </style>
+  
+  <!-- PageFlip (flipbook) -->
+<script src="/flipbook-viewerip/page-flip.browser.min.js</script>
+
+<!-- PDF.js (core) -->
+/flipbook-viewer/libs/pdfjs/pdf.min.js</script>
+
+<!-- PDF.js Worker (necesario) -->
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
+  } else {
+    console.error("pdfjsLib no está cargado. Revisa la ruta a /flipbook-viewer/libs/pdfjs/pdf.min.js");
+  }
+</script>
+
 </head>
 <body>
   <div class="header">
