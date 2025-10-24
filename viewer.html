@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="doc-title">Visor (Flipbook)</title>
 
-  <!-- PageFlip (efecto "revista") -->
+  <!-- PageFlip (efecto “revista”) -->
   https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css
   https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
 
-  <!-- PDF.js (lectura del PDF en el navegador) -->
+  <!-- PDF.js (para leer el PDF en el navegador) -->
   https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
   <script>
-    // Worker de PDF.js (misma versión que el script)
-    // Doc oficial: "Getting started" de PDF.js
+    // Worker de PDF.js (MISMA versión que el script)
+    // Doc oficial: "Getting Started" de PDF.js
     // https://mozilla.github.io/pdf.js/getting_started/index.html
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -84,11 +84,11 @@
       }
 
       try {
-        // Cargar PDF
+        // 1) Cargar PDF
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
-        // Medidas base
+        // 2) Medidas base (proporción de la primera página)
         const firstPage = await pdf.getPage(1);
         const firstViewport = firstPage.getViewport({ scale: 1 });
         const ratio = firstViewport.height / firstViewport.width;
@@ -97,7 +97,7 @@
         const pageW = Math.max(700, Math.floor(maxW * 0.9));
         const pageH = Math.floor(pageW * ratio);
 
-        // Render a imágenes
+        // 3) Render a imágenes
         const images = [];
         const progressEl = document.getElementById('progress');
 
@@ -117,7 +117,7 @@
           canvas.width = canvas.height = 0;
         }
 
-        // PageFlip
+        // 4) PageFlip con las imágenes renderizadas
         const container = document.getElementById('flipbook');
         const pageFlip = new St.PageFlip(container, {
           width: pageW, height: pageH,
@@ -131,7 +131,7 @@
 
         pageFlip.loadFromImages(images);
 
-        // Oculta loader
+        // 5) Oculta loader
         document.getElementById('loader').style.display = 'none';
 
         // Doble clic = zoom
