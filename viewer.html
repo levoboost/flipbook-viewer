@@ -18,9 +18,16 @@
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
-  <!-- Librerías locales (rutas relativas desde viewer.html en la raíz del repo) -->
-  <script src="f.min.js</script>
-  <script>if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = "libs/pdfjs/pdf.worker.min.js"; }</script>
+  <!-- ✅ Librerías locales (rutas relativas desde viewer.html en la raíz del repo) -->
+  libs/pdfjs/pdf.min.js</script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "libs/pdfjs/pdf.worker.min.js";
+      console.log("[init] PDF.js listo");
+    } else {
+      console.error("[init] pdfjsLib no cargado — revisa libs/pdfjs/pdf.min.js");
+    }
+  </script>
   libs/page-flip/page-flip.browser.min.js</script>
 </head>
 <body>
@@ -50,7 +57,7 @@
     const flipEl = $("#flipbook"), errorEl = $("#error");
     const input = $("#pdfInput"), btn = $("#btnLoad");
 
-    // Soporta ?src= y ?pdf= ; prioridad a src (tu URL actual usa src)
+    // Soporta ?src= y ?pdf= ; prioridad a src (como en tu URL)
     const pSrc = qs("src");
     const pPdf = qs("pdf");
     const title = qs("title");
@@ -90,7 +97,6 @@
         for (let i = 1; i <= pdf.numPages; i++){
           statusEl.textContent = `Renderizando página ${i} de ${pdf.numPages}…`;
           percent.textContent = Math.round((i-1)/pdf.numPages*100) + "%";
-
           const page = await pdf.getPage(i);
           const viewport = page.getViewport({ scale: SCALE });
           const canvas = document.createElement("canvas");
@@ -131,8 +137,8 @@
       const url = input.value.trim();
       if (!url) { fail("Indica la ruta del PDF (ej.: test.pdf)."); return; }
       const u = new URL(location.href);
-      u.searchParams.set("src", url);            // priorizamos src
-      u.searchParams.set("v", Date.now().toString().slice(-6)); // bust caché
+      u.searchParams.set("src", url); // priorizamos src
+      u.searchParams.set("v", Date.now().toString().slice(-6)); // evita caché
       location.href = u.toString();
     });
 
