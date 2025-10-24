@@ -5,18 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="doc-title">Visor (Flipbook)</title>
 
-  <!-- PageFlip (SOLO JS; NO hay CSS en el paquete) -->
-  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
+  <!-- PageFlip (efecto revista) -->
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/jsowser.min.js</script>
 
   <!-- PDF.js -->
   https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
   <script>
     // Worker de PDF.js (misma versión que el script)
-    // Doc oficial "Getting started"
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+      }
+    });
   </script>
 
   <style>
@@ -38,10 +39,8 @@
       text-align: center;
     }
     .progress { margin-top: 8px; color: #b5c3ff; font-size: 12px; }
-    a.btn {
-      color: #9ecbff; text-decoration: none; border: 1px solid #2a3a5a; padding: 6px 10px;
-      border-radius: 6px; background: #111725;
-    }
+    a.btn { color: #9ecbff; text-decoration: none; border: 1px solid #2a3a5a; padding: 6px 10px;
+            border-radius: 6px; background: #111725; }
     .diag {position:fixed; bottom:8px; left:8px; font-size:12px; opacity:.6}
   </style>
 </head>
@@ -91,11 +90,11 @@
       }
 
       try {
-        // 1) Carga PDF (desde tu Worker o URL pública)
+        // 1) Cargar PDF
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
-        // 2) Medidas base (proporción de la primera página)
+        // 2) Medidas base
         const firstPage = await pdf.getPage(1);
         const firstViewport = firstPage.getViewport({ scale: 1 });
         const ratio = firstViewport.height / firstViewport.width;
@@ -144,8 +143,7 @@
         // Doble clic = zoom
         container.addEventListener('dblclick', () => {
           const current = container.style.transform || 'scale(1)';
-          const zoomed = current.includes('1)') ? 'scale(1.6)' : 'scale(1)';
-          container.style.transform = zoomed;
+          container.style.transform = current.includes('1)') ? 'scale(1.6)' : 'scale(1)';
           container.style.transformOrigin = '50% 50%';
         });
 
