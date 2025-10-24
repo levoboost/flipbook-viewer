@@ -18,15 +18,14 @@
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
-  <script src="Lib/pdfjs/pdf.min.js"></script>
+  <script src="lib/pdfjs/pdf.min.js"></script>
   <script>
     // Configura el worker de PDF.js (misma versión que pdf.min.js)
     if (window.pdfjsLib) {
-      // CORRECCIÓN 2: lib/ -> Lib/
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "Lib/pdfjs/pdf.worker.min.js";
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js";
     }
   </script>
-  <script src="Lib/page-flip/page-flip.browser.min.js"></script>
+  <script src="lib/page-flip/page-flip.browser.min.js"></script>
 
 </head>
 
@@ -85,20 +84,17 @@
         loader.classList.remove("hidden");
 
         // Verificaciones de dependencias (evita pantalla negra)
-        // CORRECCIÓN 4 (Mensaje de error): lib/ -> Lib/
         if (!window.pdfjsLib) {
-          showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Revisa <script src=\"Lib/pdfjs/pdf.min.js\"></script> y que no da 404.");
+          showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Revisa <script src=\"lib/pdfjs/pdf.min.js\"></script> y que no da 404.");
           return;
         }
-         // CORRECCIÓN 5 (Mensaje de error): lib/ -> Lib/
         if (!(window.St && St.PageFlip)) {
-          showError("PageFlip no está disponible. Revisa <script src=\"Lib/page-flip/page-flip.browser.min.js\"></script>.");
+          showError("PageFlip no está disponible. Revisa <script src=\"lib/page-flip/page-flip.browser.min.js\"></script>.");
           return;
         }
 
         // Asegura el worker (por si el bloque de <head> aún no lo fijó)
-        // CORRECCIÓN 6: lib/ -> Lib/
-        try { pdfjsLib.GlobalWorkerOptions.workerSrc = "Lib/pdfjs/pdf.worker.min.js"; } catch {}
+        try { pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js"; } catch {}
 
         let task;
         try {
