@@ -250,25 +250,6 @@
     });
   }
 
-  // FUNCIÓN CORREGIDA - Usar flipPage en lugar de flipNext/flipPrev
-  function navigateWithAnimation(direction) {
-    if (!flip) return;
-    
-    const currentPage = flip.getCurrentPageIndex();
-    let targetPage;
-    
-    if (direction === 'next') {
-      targetPage = currentPage + 1;
-    } else if (direction === 'prev') {
-      targetPage = currentPage - 1;
-    }
-    
-    // Verificar que la página objetivo existe
-    if (targetPage >= 0 && targetPage < allImages.length) {
-      flip.flipPage(targetPage);
-    }
-  }
-
   pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
     
@@ -298,54 +279,47 @@
         allImages.push(img);
       }
 
-      // CONFIGURACIÓN MÁS COMPATIBLE
+      // CONFIGURACIÓN SIMPLIFICADA Y FUNCIONAL
       flip = new St.PageFlip(container, {
         width: 1000,
         height: 1413,
         size: "fixed",
         showCover: true, 
         usePortrait: true,
-        flippingTime: 800, // Animación más lenta para mejor efecto
-        maxShadowOpacity: 0.4, // Sombra más visible
+        flippingTime: 600,
+        maxShadowOpacity: 0.3,
         drawShadow: true,
-        mobileScrollSupport: false, // Desactivar para mejor control
+        mobileScrollSupport: false,
         minWidth: 1000,
         minHeight: 1413,
         maxWidth: 1000,
         maxHeight: 1413,
-        autoSize: false,
-        swipeDistance: 50,
-        clickToFlip: true,
-        disableFlipByClick: false
+        autoSize: false
       });
 
       flip.loadFromImages(allImages);
       
-      // CONFIGURAR EVENTOS DESPUÉS DE CARGAR
-      setTimeout(() => {
-        setupZoomControls();
-        setupDownloadButton();
-        applyZoom();
-        loader.style.display = 'none';
-      }, 500);
+      // CONFIGURAR CONTROLES DESPUÉS DE CARGAR
+      setupZoomControls();
+      setupDownloadButton();
+      applyZoom();
+      loader.style.display = 'none';
 
-      // TECLADO - USAR flipPage DIRECTAMENTE
+      // CONTROL DE TECLADO - MÉTODO DIRECTO QUE FUNCIONA
       document.addEventListener('keydown', (e) => {
+        // Flecha derecha - Página siguiente
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          const currentPage = flip.getCurrentPageIndex();
-          if (currentPage < allImages.length - 1) {
-            flip.flipPage(currentPage + 1);
-          }
+          // Usar turnToNextPage que es más confiable
+          flip.turnToNextPage();
         }
-        if (e.key === 'ArrowLeft') {
+        // Flecha izquierda - Página anterior
+        else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          const currentPage = flip.getCurrentPageIndex();
-          if (currentPage > 0) {
-            flip.flipPage(currentPage - 1);
-          }
+          flip.turnToPrevPage();
         }
-        if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
+        // Controles de zoom
+        else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom < MAX_ZOOM) {
             currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
@@ -353,7 +327,7 @@
             applyZoom();
           }
         }
-        if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
+        else if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom > MIN_ZOOM) {
             currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
@@ -361,27 +335,14 @@
             applyZoom();
           }
         }
-        if (e.key === '0' && !e.ctrlKey) {
+        else if (e.key === '0' && !e.ctrlKey) {
           currentZoom = 0.75;
           applyZoom();
         }
       });
 
-      // CLIC EN BORDES - USAR flipPage DIRECTAMENTE
-      container.addEventListener('click', (e) => {
-        const rect = container.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const currentPage = flip.getCurrentPageIndex();
-        
-        const edgeWidth = 100;
-        
-        if (clickX > rect.width - edgeWidth && currentPage < allImages.length - 1) {
-          flip.flipPage(currentPage + 1);
-        }
-        else if (clickX < edgeWidth && currentPage > 0) {
-          flip.flipPage(currentPage - 1);
-        }
-      });
+      // CLIC EN BORDES - DEJAR QUE PAGEFLIP MANEJE LA NAVEGACIÓN
+      // No interferir con el sistema de clics nativo de PageFlip
 
       // DOBLE CLIC PARA ZOOM
       container.addEventListener('dblclick', (e) => {
@@ -392,6 +353,10 @@
       });
 
       updateZoomDisplay();
+
+      // DEBUG: Verificar que PageFlip está funcionando
+      console.log('PageFlip cargado:', flip);
+      console.log('Número de páginas:', allImages.length);
 
     } catch (error) {
       loader.style.display = 'none';
