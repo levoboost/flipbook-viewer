@@ -18,19 +18,16 @@
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
-  <!-- ✅ Librerías locales (rutas relativas desde viewer.html en la raíz del repo) -->
-  libs/pdfjs/pdf.min.js</script>
+  <!-- Librerías: AJUSTADAS a tu estructura actual -->
+  <script src="flipbook-viewer/libs/pdfjsscript>
   <script>
     if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "libs/pdfjs/pdf.worker.min.js";
-      console.log("[init] PDF.js listo");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
     } else {
-      console.error("[init] pdfjsLib no cargado — revisa libs/pdfjs/pdf.min.js");
+      console.error("[init] pdfjsLib no cargado — revisa flipbook-viewer/libs/pdfjs/pdf.min.js");
     }
   </script>
-  libs/page-flip/page-flip.browser.min.js</script>
-</head>
-<body>
+  <script src="flipbook-viewer/libs/page-flip/page-flip.browser.min.js"></script>
   <div id="toolbar">
     <strong>Flipbook</strong>
     <input id="pdfInput" type="text" placeholder="URL o nombre del PDF (ej.: test.pdf)" />
@@ -57,7 +54,7 @@
     const flipEl = $("#flipbook"), errorEl = $("#error");
     const input = $("#pdfInput"), btn = $("#btnLoad");
 
-    // Soporta ?src= y ?pdf= ; prioridad a src (como en tu URL)
+    // Soporta ?src= (prioridad) y ?pdf=
     const pSrc = qs("src");
     const pPdf = qs("pdf");
     const title = qs("title");
@@ -80,8 +77,8 @@
       hide(errorEl);
       loader.classList.remove("hidden");
 
-      if (!window.pdfjsLib) { fail("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Verifica 'libs/pdfjs/pdf.min.js' (sin 404)."); return; }
-      if (!(window.St && St.PageFlip)) { console.warn("PageFlip no disponible. Revisa 'libs/page-flip/page-flip.browser.min.js'."); }
+      if (!window.pdfjsLib) { fail("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Verifica 'flipbook-viewer/libs/pdfjs/pdf.min.js' (sin 404)."); return; }
+      if (!(window.St && St.PageFlip)) { console.warn("PageFlip no disponible. Revisa 'flipbook-viewer/libs/page-flip/page-flip.browser.min.js'."); }
 
       let task;
       try {
@@ -125,7 +122,7 @@
         loader.classList.add("hidden");
       } catch (e){
         const hint = (String(e).includes("CORS") || String(e).includes("Network"))
-          ? "\n\nSugerencia: si el PDF está en otro dominio, puede requerir CORS. Para descartar el problema, prueba con un PDF local (p.ej., test.pdf)."
+          ? "\n\nSugerencia: si el PDF está en otro dominio, puede requerir CORS. Para descartar, prueba con un PDF local (p.ej., test.pdf)."
           : "";
         fail("No se pudo cargar/renderizar el PDF:\n" + (e && e.message ? e.message : String(e)) + hint);
       } finally {
@@ -137,8 +134,8 @@
       const url = input.value.trim();
       if (!url) { fail("Indica la ruta del PDF (ej.: test.pdf)."); return; }
       const u = new URL(location.href);
-      u.searchParams.set("src", url); // priorizamos src
-      u.searchParams.set("v", Date.now().toString().slice(-6)); // evita caché
+      u.searchParams.set("src", url);            // priorizamos src
+      u.searchParams.set("v", Date.now().toString().slice(-6)); // bust caché
       location.href = u.toString();
     });
 
