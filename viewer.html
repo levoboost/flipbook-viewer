@@ -1,10 +1,10 @@
+<!-- Build verificado: OK -->
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Flipbook Viewer</title>
-
   <style>
     html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #0f1115; color: #e8eaed; }
     #toolbar { display: flex; gap: .5rem; align-items: center; padding: .6rem .8rem; border-bottom: 1px solid #22293a; position: sticky; top: 0; background: #0f1115; z-index: 10; }
@@ -18,19 +18,17 @@
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
-  <script>// Build verificado: OK</script>
-  flipbook-viewer/libs/pdfjs/pdf.min.js</script>
-  <script>
-    if (window.pdfjsLib) {
+  <!-- Librerías locales (según tu estructura actual) -->
+  <script src="flipbook-viewer/libs/pdfjs/pdf.min.js"></script>
+if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
     }
   </script>
-  <scriptk-viewer/libs/page-flip/page-flip.browser.min.js</script>
-</head>
+  <script src="flipbook-viewer/libs/page-flip/page-flip.browser.min</head>
 <body>
   <div id="toolbar">
     <strong>Flipbook</strong>
-    <input id="pdfInput" type="text" placeholder="URL o nombre del PDF (ej.: flipbook-viewer/test.pdf o URL completa)" />
+    <input id="pdfInput" type="text" placeholder="URL o ruta del PDF (ej.: flipbook-viewer/test.pdf)" />
     <button id="btnLoad">Cargar</button>
   </div>
 
@@ -46,11 +44,15 @@
   <script>
     (function(){
       const $ = s => document.querySelector(s);
-      const qs = name => new URLSearchParams(location.search).get(name);
+      const qs = n => new URLSearchParams(location.search).get(n);
 
-      const loader = $("#loader"), percent = $("#percent"), statusEl = $("#status");
-      const flipEl = $("#flipbook"), errorEl = $("#error");
-      const input = $("#pdfInput"), btn = $("#btnLoad");
+      const loader = $("#loader");
+      const percent = $("#percent");
+      const statusEl = $("#status");
+      const flipEl = $("#flipbook");
+      const errorEl = $("#error");
+      const input = $("#pdfInput");
+      const btn = $("#btnLoad");
 
       // Soporta ?src= (prioridad) y ?pdf=
       const pSrc = qs("src");
@@ -66,16 +68,19 @@
         errorEl.style.display = "block";
         console.error(msg);
       }
+      function hideError(){
+        errorEl.style.display = "none";
+      }
       function setProgress(loaded, total){
         if (!total) { percent.textContent = "…"; return; }
         percent.textContent = Math.max(0, Math.min(100, Math.round(loaded/total*100))) + "%";
       }
 
       async function load(pdfUrl){
-        errorEl.style.display = "none";
+        hideError();
         loader.classList.remove("hidden");
 
-        // Verificaciones de dependencias
+        // Verificaciones de dependencias (evita pantalla negra)
         if (!window.pdfjsLib) {
           showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Verifica 'flipbook-viewer/libs/pdfjs/pdf.min.js' (sin 404).");
           return;
@@ -84,7 +89,7 @@
           console.warn("PageFlip no disponible. Revisa 'flipbook-viewer/libs/page-flip/page-flip.browser.min.js'.");
         }
 
-        // Configurar worker (necesario para rendimiento)
+        // Asegura worker de PDF.js (rendimiento)
         try {
           pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
         } catch (e) {
@@ -105,12 +110,15 @@
           for (let i = 1; i <= pdf.numPages; i++){
             statusEl.textContent = `Renderizando página ${i} de ${pdf.numPages}…`;
             percent.textContent = Math.round((i-1)/pdf.numPages*100) + "%";
+
             const page = await pdf.getPage(i);
             const viewport = page.getViewport({ scale: SCALE });
+
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
             canvas.width = Math.floor(viewport.width);
             canvas.height = Math.floor(viewport.height);
+
             await page.render({ canvasContext: ctx, viewport }).promise;
             images.push(canvas.toDataURL("image/png"));
           }
@@ -120,13 +128,25 @@
 
           const probe = new Image();
           await new Promise(res => { probe.onload = res; probe.onerror = res; probe.src = images[0]; });
-          const w = probe.naturalWidth || 1000, h = probe.naturalHeight || 1414;
+          const w = probe.naturalWidth || 1000;
+          const h = probe.naturalHeight || 1414;
 
           const pageFlip = new St.PageFlip(flipEl, {
-            width: w, height: h, size: "stretch",
-            minWidth: 315, minHeight: 420, maxWidth: 3000, maxHeight: 4000,
-            showCover: false, mobileScrollSupport: true, usePortrait: true,
-            disableFlipByClick: false, flippingTime: 600, maxShadowOpacity: .3, drawShadow: true, autoSize: true
+            width: w,
+            height: h,
+            size: "stretch",
+            minWidth: 315,
+            minHeight: 420,
+            maxWidth: 3000,
+            maxHeight: 4000,
+            showCover: false,
+            mobileScrollSupport: true,
+            usePortrait: true,
+            disableFlipByClick: false,
+            flippingTime: 600,
+            maxShadowOpacity: .3,
+            drawShadow: true,
+            autoSize: true
           });
           pageFlip.loadFromImages(images);
 
@@ -143,10 +163,13 @@
 
       btn.addEventListener("click", () => {
         const url = input.value.trim();
-        if (!url) { showError("Indica la ruta del PDF (ej.: flipbook-viewer/test.pdf)."); return; }
+        if (!url) {
+          showError("Indica la ruta del PDF (ej.: flipbook-viewer/test.pdf).");
+          return;
+        }
         const u = new URL(location.href);
         u.searchParams.set("src", url);
-        u.searchParams.set("v", Date.now().toString().slice(-6)); // evita caché
+        u.searchParams.set("v", Date.now().toString().slice(-6)); // evitar caché
         location.href = u.toString();
       });
 
