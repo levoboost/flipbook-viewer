@@ -53,25 +53,19 @@
     }
     .toolbar button:hover { background: #1d2740; }
 
-    /* Área principal del flipbook */
     #stage {
       position: relative;
       width: 100%;
       height: calc(100vh - 56px);
-      /* espacio resto después de la toolbar */
       overflow: hidden;
       display: grid;
       place-items: center;
     }
-
-    /* Contenedor que usaremos para PageFlip */
     #flipbook {
       width: min(100vw, 1200px);
-      height: calc(min(100vw, 1200px) * 0.70); /* relación aprox. A4 apaisado */
-      /* PageFlip hará el resize; este valor inicial ayuda al primer render */
+      height: calc(min(100vw, 1200px) * 0.70);
     }
 
-    /* Loader overlay */
     #loader {
       position: fixed;
       inset: 0;
@@ -83,9 +77,7 @@
       transition: opacity .25s ease;
     }
     #loader.hidden { opacity: 0; pointer-events: none; }
-    .progress {
-      text-align: center;
-    }
+    .progress { text-align: center; }
     .progress .big {
       font-size: 2.25rem;
       font-weight: 700;
@@ -98,7 +90,6 @@
       color: var(--muted);
     }
 
-    /* Caja de error */
     #errorBox {
       position: fixed;
       bottom: 16px;
@@ -116,14 +107,8 @@
       line-height: 1.35;
     }
 
-    /* Sugerencia */
-    .hint {
-      font-size: .85rem;
-      color: var(--muted);
-      margin-left: .25rem;
-    }
+    .hint { font-size: .85rem; color: var(--muted); margin-left: .25rem; }
 
-    /* Ajustes responsive básicos */
     @media (max-width: 700px) {
       #flipbook {
         width: 100vw;
@@ -132,20 +117,24 @@
     }
   </style>
 
-  <!-- Librería PageFlip (flipbook) - local -->
-  <scriptge-flip/page-flip.browser.min.js</script>
+  <!-- PageFlip (flipbook) - local -->
+  libs/page-flip/page-flip.browser.min.js</script>
 
   <!-- PDF.js (núcleo) - local -->
   libs/pdfjs/pdf.min.js</script>
 
-  <!-- Configuración del worker de PDF.js (obligatorio para rendimiento) -->
+  <!-- Configura el worker de PDF.js (debe ir DESPUÉS de cargar pdf.min.js) -->
   <script>
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "libs/pdfjs/pdf.worker.min.js";
-      console.log("[init] PDF.js ok. Worker:", pdfjsLib.GlobalWorkerOptions.workerSrc);
-    } else {
-      console.error("[init] pdfjsLib no cargado. Revisa ruta: libs/pdfjs/pdf.min.js");
-    }
+    (function() {
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "libs/pdfjs/pdf.worker.min.js";
+        console.log("[init] PDF.js ok. Worker:", pdfjsLib.GlobalWorkerOptions.workerSrc);
+      } else {
+        console.error("[init] pdfjsLib no está cargado. Revisa la ruta: libs/pdfjs/pdf.min.js");
+      }
+      console.log("[diag] typeof PageFlip:", typeof (window.St && St.PageFlip));
+      console.log("[diag] typeof pdfjsLib:", typeof window.pdfjsLib);
+    })();
   </script>
 </head>
 
@@ -185,11 +174,9 @@
       const input = $("#pdfInput");
       const btn = $("#btnLoad");
 
-      // PDF por defecto: test.pdf en la misma carpeta que viewer.html
       const defaultPdf = "test.pdf";
       const paramPdf = qs("pdf");
       const initialPdf = paramPdf ? decodeURIComponent(paramPdf) : defaultPdf;
-
       input.value = initialPdf;
 
       function showError(msg) {
@@ -197,34 +184,34 @@
         errorBox.textContent = String(msg);
         errorBox.style.display = "block";
       }
-      function hideError() {
-        errorBox.style.display = "none";
-      }
+      function hideError() { errorBox.style.display = "none"; }
 
       function showLoader(text) {
         if (text) statusEl.textContent = text;
         loader.classList.remove("hidden");
       }
       function updateProgress(loaded, total) {
-        if (!total) {
-          percentEl.textContent = "…";
-          return;
-        }
+        if (!total) { percentEl.textContent = "…"; return; }
         const p = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
         percentEl.textContent = p + "%";
       }
-      function hideLoader() {
-        loader.classList.add("hidden");
-      }
+      function hideLoader() { loader.classList.add("hidden"); }
 
-      // Carga el PDF, renderiza páginas a imágenes y las pasa a PageFlip
       async function loadFlipbook(pdfUrl) {
         hideError();
         showLoader("Cargando PDF...");
 
+        if (!window.pdfjsLib) {
+          hideLoader();
+          showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Verifica que 'libs/pdfjs/pdf.min.js' existe y se carga sin 404.");
+          return;
+        }
+        if (!(window.St && St.PageFlip)) {
+          console.warn("PageFlip no disponible aún. Revisa 'libs/page-flip/page-flip.browser.min.js'.");
+        }
+
         let loadingTask;
         try {
-          // Nota: si pdfUrl es un dominio distinto (p.ej., SharePoint), puedes necesitar CORS.
           loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
           loadingTask.onProgress = (p) => updateProgress(p.loaded || 0, p.total || 0);
 
@@ -232,53 +219,41 @@
           statusEl.textContent = "Renderizando páginas...";
           const images = [];
           const pageCount = pdf.numPages;
-
-          // Escala de render: 1.5–2.0 es buena calidad; ajusta si hace falta
           const SCALE = 1.6;
 
           for (let n = 1; n <= pageCount; n++) {
             statusEl.textContent = `Renderizando página ${n} de ${pageCount}...`;
-            // Sugerencia visual de progreso de render (no sólo descarga)
             percentEl.textContent = Math.round((n - 1) / pageCount * 100) + "%";
 
             const page = await pdf.getPage(n);
             const viewport = page.getViewport({ scale: SCALE });
 
             const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d", { willReadFrequently: false });
+            const ctx = canvas.getContext("2d");
 
             canvas.width = Math.floor(viewport.width);
             canvas.height = Math.floor(viewport.height);
 
             await page.render({ canvasContext: ctx, viewport }).promise;
 
-            const dataUrl = canvas.toDataURL("image/png"); // PNG para nitidez
+            const dataUrl = canvas.toDataURL("image/png");
             images.push(dataUrl);
-
-            // Limpieza básica
-            ctx && ctx.reset && ctx.reset();
           }
 
-          // Inicializa PageFlip
           statusEl.textContent = "Preparando flipbook...";
-
-          // Limpia contenido previo
           flipContainer.innerHTML = "";
 
-          // Usa tamaño basado en la primera página renderizada
+          // Determina tamaño a partir de la primera imagen
           const imgProbe = new Image();
-          await new Promise((res) => {
-            imgProbe.onload = res;
-            imgProbe.onerror = res; // aunque falle, seguimos con fallback
-            imgProbe.src = images[0];
-          });
+          await new Promise((res) => { imgProbe.onload = res; imgProbe.onerror = res; imgProbe.src = images[0]; });
           const baseWidth = imgProbe.naturalWidth || 1000;
           const baseHeight = imgProbe.naturalHeight || 1414;
 
+          // Inicializa PageFlip
           const pageFlip = new St.PageFlip(flipContainer, {
             width: baseWidth,
             height: baseHeight,
-            size: "stretch",           // se adapta al contenedor
+            size: "stretch",
             minWidth: 315,
             minHeight: 420,
             maxWidth: 3000,
@@ -302,7 +277,7 @@
         } catch (err) {
           hideLoader();
           const hint = (String(err).includes("CORS") || String(err).includes("Network"))
-            ? "\n\nSugerencia: Si el PDF está en otro dominio (p.ej., SharePoint) puede bloquearse por CORS al abrirse desde GitHub Pages. Para la demo usa un PDF en la misma carpeta que este viewer (ej.: test.pdf)."
+            ? "\n\nSugerencia: Si el PDF está en otro dominio (p.ej., SharePoint) puede bloquearse por CORS al abrirse desde GitHub Pages. Para la demo usa un PDF local (test.pdf)."
             : "";
           showError("No se pudo cargar/renderizar el PDF:\n" + (err && err.message ? err.message : String(err)) + hint);
         } finally {
@@ -310,23 +285,18 @@
         }
       }
 
-      // Botón de cargar
       btn.addEventListener("click", () => {
         const url = input.value.trim();
-        if (!url) {
-          showError("Indica la ruta del PDF (ej.: test.pdf).");
-          return;
-        }
-        // Añade ?v=… para esquivar caché al cambiar
+        if (!url) { showError("Indica la ruta del PDF (ej.: test.pdf)."); return; }
         const u = new URL(location.href);
         u.searchParams.set("pdf", url);
         u.searchParams.set("v", Date.now().toString().slice(-6));
         location.href = u.toString();
       });
 
-      // Carga inicial
       loadFlipbook(initialPdf);
     })();
   </script>
 </body>
 </html>
+``
