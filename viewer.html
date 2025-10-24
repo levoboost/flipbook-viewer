@@ -1,174 +1,172 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Flipbook Viewer</title>
-
-  <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #0f1115; color: #e8eaed; }
-    #toolbar { display: flex; gap: .5rem; align-items: center; padding: .6rem .8rem; border-bottom: 1px solid #22293a; position: sticky; top: 0; background: #0f1115; z-index: 10; }
-    #toolbar input { flex: 1; min-width: 0; padding: .45rem .6rem; border: 1px solid #2a3142; background: #12141a; color: #e8eaed; border-radius: .4rem; }
-    #toolbar button { padding: .45rem .75rem; border: 1px solid #2a3142; background: #182033; color: #e8eaed; border-radius: .4rem; cursor: pointer; }
-    #stage { height: calc(100vh - 54px); display: grid; place-items: center; overflow: hidden; }
-    #flipbook { width: min(100vw, 1200px); height: calc(min(100vw, 1200px) * 0.70); }
-    #loader { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15,17,21,.92); z-index: 999; color: #e8eaed; transition: opacity .25s ease; }
-    #loader.hidden { opacity: 0; pointer-events: none; }
-    #percent { font-size: 2rem; font-weight: 700; }
-    #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
-  </style>
-
-  <!-- Librerías -->
-  <script src="lib/pdfjs/pdf.min.js"></script>
-  <script>
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js";
-    }
-  </script>
-  <script src="lib/page-flip/page-flip.browser.min.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flipbook Viewer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css" />
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: #eee;
+    font-family: system-ui, Segoe UI, Roboto, Arial;
+  }
+  header {
+    padding: 10px 14px;
+    background: #111;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 1px solid #222;
+  }
+  #title {
+    font-size: 16px;
+    opacity: .85;
+  }
+  #wrap {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    height: calc(100dvh - 52px);
+    padding: 10px;
+  }
+  #book {
+    width: min(100%, 1200px);
+    height: 100%;
+  }
+  .hint {
+    position: fixed;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12px;
+    color: #aaa;
+  }
+  #loader {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 8px;
+    color: white;
+    z-index: 1000;
+  }
+</style>
 </head>
-
 <body>
+<header><span id="title">Flipbook</span></header>
+<div id="wrap"><div id="book"></div></div>
+<div class="hint">Usa ← → o clic para pasar página. Doble clic para zoom.</div>
+<div id="loader" style="display:none;">Cargando PDF...</div>
 
-  <div id="toolbar">
-    <strong>Flipbook</strong>
-    <input id="pdfInput" type="text" placeholder="URL o ruta del PDF (ej.: test.pdf)" />
-    <button id="btnLoad">Cargar</button>
-  </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
+<script>
+(function() {
+  // Lee ?src= (PDF) y ?title= del querystring
+  const params = new URLSearchParams(location.search);
+  const pdfUrl = params.get('src');
+  const docTitle = params.get('title') || 'Documento';
+  document.getElementById('title').textContent = '📖 ' + docTitle;
 
-  <div id="stage">
-    <div id="flipbook" aria-label="Flipbook container"></div>
-  </div>
+  if (!pdfUrl) {
+    document.getElementById('book').innerHTML =
+      '<div style="padding:2rem">Falta el parámetro <code>src</code> con la URL del PDF.</div>';
+    return;
+  }
 
-  <div id="loader">
-    <div style="text-align:center">
-      <div id="percent">0%</div>
-      <div id="status">Cargando PDF…</div>
-    </div>
-  </div>
+  const container = document.getElementById('book');
+  const loader = document.getElementById('loader');
+  
+  // Mostrar loader
+  loader.style.display = 'block';
 
-  <div id="error"></div>
+  // Usar St.PageFlip que es el nombre correcto en esta versión
+  const flip = new St.PageFlip(container, {
+    size: "stretch",
+    width: 1024, 
+    height: 700,
+    showCover: true, 
+    usePortrait: true,
+    flippingTime: 600, 
+    maxShadowOpacity: 0.2,
+    drawShadow: true,
+    mobileScrollSupport: true
+  });
 
-  <script>
-    (function () {
-      const $ = s => document.querySelector(s);
-      const qs = n => new URLSearchParams(location.search).get(n);
+  const pdfjsLib = window['pdfjsLib'];
+  
+  // Carga y renderiza páginas a imagen bajo demanda
+  pdfjsLib.getDocument({ url: pdfUrl }).promise.then(async (pdf) => {
+    const total = pdf.numPages;
+    const imgs = [];
 
-      const loader = $("#loader"), percent = $("#percent"), statusEl = $("#status");
-      const flipEl = $("#flipbook"), errorEl = $("#error");
-      const input = $("#pdfInput"), btn = $("#btnLoad");
+    // Función para renderizar 1 página a PNG (canvas → dataURL)
+    const renderPage = async (num) => {
+      const page = await pdf.getPage(num);
+      // Ajusta escala si quieres más/meos detalle
+      const viewport = page.getViewport({ scale: 1.4 });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: false });
+      canvas.width = viewport.width; 
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      return canvas.toDataURL('image/png');
+    };
 
-      const pSrc = qs("src");
-      const pPdf = qs("pdf");
-      const title = qs("title");
-      if (title) document.title = title;
-      const initialPdf = (pSrc && decodeURIComponent(pSrc)) || (pPdf && decodeURIComponent(pPdf)) || "test.pdf";
-      input.value = initialPdf;
+    try {
+      // Carga inicial rápida: 1–2 páginas
+      const first = await renderPage(1);
+      imgs.push(first);
+      if (total >= 2) imgs.push(await renderPage(2));
+      flip.loadFromImages(imgs);
+      
+      // Ocultar loader cuando se cargan las primeras páginas
+      loader.style.display = 'none';
 
-      function showError(msg) {
-        loader.classList.add("hidden");
-        errorEl.textContent = msg;
-        errorEl.style.display = "block";
-        console.error(msg);
-      }
-      function hideError() { errorEl.style.display = "none"; }
-      function setProgress(loaded, total) {
-        if (!total) { percent.textContent = "…"; return; }
-        percent.textContent = Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) + "%";
-      }
-
-      async function load(pdfUrl) {
-        hideError();
-        loader.classList.remove("hidden");
-
-        if (!window.pdfjsLib) {
-          showError("No se pudo cargar/renderizar el PDF:\npdfjsLib no está disponible. Revisa lib/pdfjs/pdf.min.js.");
-          return;
-        }
-        
-        // VERIFICACIÓN CORREGIDA PARA PAGEFLIP
-        const PageFlipClass = window.PageFlip || (window.St && window.St.PageFlip);
-        if (!PageFlipClass) {
-          showError("PageFlip no está disponible. Revisa lib/page-flip/page-flip.browser.min.js.");
-          return;
-        }
-
-        try { pdfjsLib.GlobalWorkerOptions.workerSrc = "lib/pdfjs/pdf.worker.min.js"; } catch {}
-
-        let task;
-        try {
-          statusEl.textContent = "Descargando PDF…";
-          task = pdfjsLib.getDocument({ url: pdfUrl });
-          task.onProgress = p => setProgress(p.loaded || 0, p.total || 0);
-          const pdf = await task.promise;
-
-          statusEl.textContent = "Renderizando páginas…";
-          const images = [];
-          const SCALE = 1.6;
-
-          for (let i = 1; i <= pdf.numPages; i++) {
-            statusEl.textContent = `Renderizando página ${i} de ${pdf.numPages}…`;
-            percent.textContent = Math.round((i - 1) / pdf.numPages * 100) + "%";
-
-            const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: SCALE });
-
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = Math.floor(viewport.width);
-            canvas.height = Math.floor(viewport.height);
-
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            images.push(canvas.toDataURL("image/png"));
+      // Resto en segundo plano
+      for (let i = 3; i <= total; i++) {
+        renderPage(i).then(img => {
+          flip.images.push(img);
+          // Actualizar el flipbook con las nuevas imágenes
+          if (i === total) {
+            flip.update();
           }
-
-          statusEl.textContent = "Preparando flipbook…";
-          flipEl.innerHTML = "";
-
-          const probe = new Image();
-          await new Promise(res => { probe.onload = res; probe.onerror = res; probe.src = images[0]; });
-          const w = probe.naturalWidth || 1000;
-          const h = probe.naturalHeight || 1414;
-
-          // USAR LA CLASE CORRECTA
-          const pageFlip = new PageFlipClass(flipEl, {
-            width: w, height: h, size: "stretch",
-            minWidth: 315, minHeight: 420, maxWidth: 3000, maxHeight: 4000,
-            showCover: false, mobileScrollSupport: true, usePortrait: true,
-            disableFlipByClick: false, flippingTime: 600, maxShadowOpacity: .3,
-            drawShadow: true, autoSize: true
-          });
-          pageFlip.loadFromImages(images);
-
-          loader.classList.add("hidden");
-        } catch (e) {
-          const hint = (String(e).includes("CORS") || String(e).includes("Network"))
-            ? "\n\nSugerencia: si el PDF está en otro dominio, puede requerir CORS. Prueba con un PDF local (p.ej., test.pdf en la raíz)."
-            : "";
-          showError("No se pudo cargar/renderizar el PDF:\n" + (e && e.message ? e.message : String(e)) + hint);
-        } finally {
-          try { task && task.destroy && task.destroy(); } catch {}
-        }
+        });
       }
 
-      btn.addEventListener("click", () => {
-        const url = input.value.trim();
-        if (!url) { showError("Indica la ruta del PDF (ej.: test.pdf)."); return; }
-        const u = new URL(location.href);
-        u.searchParams.set("src", url);
-        u.searchParams.set("v", Date.now().toString().slice(-6));
-        location.href = u.toString();
+      // Controles de teclado mejorados
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') flip.turnToNextPage();
+        if (e.key === 'ArrowLeft') flip.turnToPrevPage();
+        if (e.key === '+') flip.zoomIn();
+        if (e.key === '-') flip.zoomOut();
+        if (e.key === '0') flip.setZoom(1); // Reset zoom
       });
 
-      load(initialPdf);
-    })();
-  </script>
+      // Doble clic para zoom (toggle)
+      container.addEventListener('dblclick', (e) => {
+        if (flip.getZoom() > 1) {
+          flip.setZoom(1);
+        } else {
+          flip.zoomIn();
+        }
+      });
 
-  <noscript>
-    <div style="padding:1rem;color:#ffd5de;background:#2a1320;border:1px solid #5a1b2f;margin:1rem;border-radius:.5rem;">
-      Este visor necesita JavaScript habilitado.
-    </div>
-  </noscript>
+    } catch (error) {
+      loader.style.display = 'none';
+      container.innerHTML = '<div style="padding:2rem;color:#e66">Error al renderizar páginas: ' + error.message + '</div>';
+    }
+  }).catch(err => {
+    loader.style.display = 'none';
+    container.innerHTML = '<div style="padding:2rem;color:#e66">No se pudo abrir el PDF: ' + err.message +
+                          '<br>Comprueba el enlace o permisos de compartición.</div>';
+  });
+})();
+</script>
 </body>
 </html>
-
