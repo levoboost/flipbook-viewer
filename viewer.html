@@ -29,13 +29,33 @@
 
 <script src="lib/page-flip/page-flip.browser.min.js"></script>
 <script>
-  // Verificación temporal
-  console.log('PageFlip disponible?', typeof PageFlip);
-  if (typeof PageFlip === 'undefined') {
-    console.error('PageFlip NO se cargó correctamente');
-  } else {
-    console.log('PageFlip cargado OK');
-  }
+  // Diagnóstico completo
+  console.log('=== DIAGNÓSTICO DETALLADO ===');
+  
+  // Verificar si el script se cargó
+  const allScripts = Array.from(document.scripts);
+  const pageFlipScript = allScripts.find(script => 
+    script.src.includes('page-flip')
+  );
+  console.log('Script cargado:', pageFlipScript ? pageFlipScript.src : 'NO');
+  
+  // Verificar todas las variables globales posibles
+  console.log('PageFlip:', typeof PageFlip);
+  console.log('StPageFlip:', typeof StPageFlip);
+  console.log('window.PageFlip:', typeof window.PageFlip);
+  
+  // Listar TODAS las variables globales que podrían ser la librería
+  const possibleNames = Object.keys(window).filter(key => 
+    key.toLowerCase().includes('page') || 
+    key.toLowerCase().includes('flip') ||
+    key.toLowerCase().includes('st')
+  );
+  console.log('Variables posibles:', possibleNames);
+  
+  // Si encontramos alguna variable relacionada, mostrarla
+  possibleNames.forEach(name => {
+    console.log(`Variable ${name}:`, window[name]);
+  });
 </script>
   
 </head>
