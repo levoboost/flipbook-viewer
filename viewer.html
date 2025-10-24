@@ -18,9 +18,8 @@
     #error { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #2a1320; border: 1px solid #5a1b2f; color: #ffd5de; padding: .7rem .9rem; border-radius: .5rem; display: none; white-space: pre-wrap; z-index: 1000; }
   </style>
 
-  <!-- 🔧 Librerías locales — OJO: ahora sí con src="..." y rutas correctas -->
-  flipbook-viewer/libs/pdfjs/pdf.min.js</script>
-  <script>
+  <!-- ✅ Librerías locales (AHORA SÍ con src="...") -->
+  <script src="flipbook-viewer/libs/pdfjs/pdf.min.js"></pt>
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "flipbook-viewer/libs/pdfjs/pdf.worker.min.js";
       console.log("[init] PDF.js listo. Worker:", pdfjsLib.GlobalWorkerOptions.workerSrc);
@@ -28,7 +27,7 @@
       console.error("[init] pdfjsLib no cargado — revisa flipbook-viewer/libs/pdfjs/pdf.min.js");
     }
   </script>
-  flipbook-viewer/libs/page-flip/page-flip.browser.min.js</script>
+  <script src="flipibs/page-flip/page-flip.browser.min.js</script>
 </head>
 <body>
   <div id="toolbar">
