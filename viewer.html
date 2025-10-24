@@ -108,14 +108,14 @@
   <div id="header-controls">
     <div class="zoom-controls">
       <button class="zoom-btn" id="zoomOut" title="Zoom Out">-</button>
-      <button class="zoom-btn" id="zoomReset" title="Zoom 100%">1:1</button>
+      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">100%</span>
       <button class="zoom-btn" id="zoomIn" title="Zoom In">+</button>
     </div>
     <button class="control-btn" id="downloadBtn" title="Descargar PDF">📥 Descargar</button>
   </div>
 </header>
 <div id="wrap"><div id="book"></div></div>
-<div class="hint">Usa ← → o clic para pasar página. Doble clic para zoom.</div>
+<div class="hint">Usa ← → o clic para pasar página. Controles de zoom arriba.</div>
 <div id="loader">Cargando PDF...</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -139,39 +139,73 @@
   const loader = document.getElementById('loader');
   let flip; // Declarar flip aquí para acceso global
   
+  // Variables para control de zoom
+  let currentZoom = 1;
+  const ZOOM_STEP = 0.2;
+  const MIN_ZOOM = 0.5;
+  const MAX_ZOOM = 3.0;
+
   // Configurar PDF.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
   // Array para almacenar todas las imágenes
   let allImages = [];
 
+  // Función para aplicar zoom
+  function applyZoom() {
+    if (!flip) return;
+    
+    // Actualizar el tamaño basado en el zoom
+    const baseWidth = 800;
+    const baseHeight = 1130;
+    
+    const newWidth = baseWidth * currentZoom;
+    const newHeight = baseHeight * currentZoom;
+    
+    // Actualizar el flipbook con el nuevo tamaño
+    flip.updateBounds({
+      width: newWidth,
+      height: newHeight
+    });
+    
+    updateZoomDisplay();
+  }
+
   // Función para manejar el zoom
   function setupZoomControls() {
     const zoomIn = document.getElementById('zoomIn');
     const zoomOut = document.getElementById('zoomOut');
-    const zoomReset = document.getElementById('zoomReset');
 
     zoomIn.addEventListener('click', () => {
-      flip.zoomIn();
-      updateZoomState();
+      if (currentZoom < MAX_ZOOM) {
+        currentZoom += ZOOM_STEP;
+        applyZoom();
+      }
     });
 
     zoomOut.addEventListener('click', () => {
-      flip.zoomOut();
-      updateZoomState();
+      if (currentZoom > MIN_ZOOM) {
+        currentZoom -= ZOOM_STEP;
+        applyZoom();
+      }
     });
 
-    zoomReset.addEventListener('click', () => {
-      flip.setZoom(1);
-      updateZoomState();
+    // También permitir reset con doble clic en el indicador de zoom
+    const zoomLevel = document.getElementById('zoomLevel');
+    zoomLevel.addEventListener('dblclick', () => {
+      currentZoom = 1;
+      applyZoom();
     });
   }
 
-  // Función para actualizar estado visual del zoom
-  function updateZoomState() {
-    const zoomLevel = flip.getZoom();
-    const zoomReset = document.getElementById('zoomReset');
-    zoomReset.textContent = Math.round(zoomLevel * 100) + '%';
+  // Función para actualizar la visualización del zoom
+  function updateZoomDisplay() {
+    const zoomLevel = document.getElementById('zoomLevel');
+    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+    
+    // Actualizar estado de botones
+    document.getElementById('zoomIn').disabled = currentZoom >= MAX_ZOOM;
+    document.getElementById('zoomOut').disabled = currentZoom <= MIN_ZOOM;
   }
 
   // Función para descargar el PDF
@@ -185,6 +219,7 @@
         
         // Descargar el archivo PDF original
         const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error('Error en la descarga');
         const blob = await response.blob();
         
         // Crear enlace de descarga
@@ -269,19 +304,20 @@
       // Inicializar PageFlip después de cargar todas las imágenes
       flip = new St.PageFlip(container, {
         size: "stretch",
-        width: 800,  // Ancho más pequeño para A4 vertical
-        height: 1130, // Alto proporcional para A4 (1.414 relación)
+        width: 800,  // Ancho base para A4 vertical
+        height: 1130, // Alto base para A4 (1.414 relación)
         showCover: true, 
         usePortrait: true, // IMPORTANTE: usar modo retrato
         flippingTime: 600, 
         maxShadowOpacity: 0.2,
         drawShadow: true,
         mobileScrollSupport: true,
-        // Configuración mejorada del zoom
+        // Configuración para permitir redimensionado
         minWidth: 400,
         minHeight: 565,
         maxWidth: 2000,
-        maxHeight: 2828
+        maxHeight: 2828,
+        autoSize: true
       });
 
       // Cargar todas las imágenes al flipbook
@@ -300,30 +336,30 @@
         if (e.key === 'ArrowLeft') flip.turnToPrevPage();
         if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
-          flip.zoomIn();
-          updateZoomState();
+          if (currentZoom < MAX_ZOOM) {
+            currentZoom += ZOOM_STEP;
+            applyZoom();
+          }
         }
         if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
           e.preventDefault();
-          flip.zoomOut();
-          updateZoomState();
+          if (currentZoom > MIN_ZOOM) {
+            currentZoom -= ZOOM_STEP;
+            applyZoom();
+          }
         }
         if (e.key === '0' && !e.ctrlKey) {
-          flip.setZoom(1);
-          updateZoomState();
+          currentZoom = 1;
+          applyZoom();
         }
       });
 
-      // Doble clic para zoom (toggle) - PREVENIR cambio de página
+      // Doble clic para resetear zoom
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (flip.getZoom() > 1) {
-          flip.setZoom(1);
-        } else {
-          flip.zoomIn();
-        }
-        updateZoomState();
+        currentZoom = 1;
+        applyZoom();
       });
 
       // Prevenir que el clic normal interfiera con el doble clic
@@ -342,7 +378,7 @@
       });
 
       // Inicializar estado del zoom
-      updateZoomState();
+      updateZoomDisplay();
 
     } catch (error) {
       loader.style.display = 'none';
