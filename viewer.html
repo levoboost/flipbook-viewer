@@ -52,14 +52,15 @@
   #wrap {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Cambiado a flex-start para permitir scroll */
     height: calc(100dvh - 52px);
     padding: 10px;
-    overflow: hidden;
+    overflow: auto; /* Permitir scroll */
   }
   #zoom-container {
-    transform-origin: center center;
+    transform-origin: top center; /* Zoom desde arriba para mejor lectura */
     transition: transform 0.3s ease;
+    margin: 20px 0; /* Margen para mejor visualización */
   }
   #book {
     width: 800px;
@@ -74,6 +75,8 @@
     font-size: 12px;
     color: #aaa;
     z-index: 1;
+    background: rgba(0,0,0,0.7);
+    padding: 5px;
   }
   #loader {
     position: fixed;
@@ -119,7 +122,7 @@
   <div id="header-controls">
     <div class="zoom-controls">
       <button class="zoom-btn" id="zoomOut" title="Zoom Out">-</button>
-      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">50%</span>
+      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">75%</span>
       <button class="zoom-btn" id="zoomIn" title="Zoom In">+</button>
     </div>
     <button class="control-btn" id="downloadBtn" title="Descargar PDF">📥 Descargar</button>
@@ -130,7 +133,7 @@
     <div id="book"></div>
   </div>
 </div>
-<div class="hint">Usa ← → o clic para pasar página. Controles de zoom arriba.</div>
+<div class="hint">Usa ← → o clic para pasar página. Scroll para navegar en zoom. Controles de zoom arriba.</div>
 <div id="loader">Cargando PDF...</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -156,8 +159,8 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  // Variables para control de zoom - INICIAR EN 50%
-  let currentZoom = 0.5;
+  // Variables para control de zoom - INICIAR EN 75% (mejor legibilidad)
+  let currentZoom = 0.75;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3.0;
@@ -172,6 +175,11 @@
   function applyZoom() {
     zoomContainer.style.transform = `scale(${currentZoom})`;
     updateZoomDisplay();
+    
+    // Desplazar al top después del zoom para mejor experiencia de lectura
+    setTimeout(() => {
+      wrap.scrollTop = 0;
+    }, 100);
   }
 
   // Función para manejar el zoom
@@ -198,7 +206,7 @@
     // También permitir reset con doble clic en el indicador de zoom
     const zoomLevel = document.getElementById('zoomLevel');
     zoomLevel.addEventListener('dblclick', () => {
-      currentZoom = 0.5; // Reset a 50% en lugar de 100%
+      currentZoom = 0.75; // Reset a 75% (óptimo para lectura)
       applyZoom();
     });
   }
@@ -279,8 +287,8 @@
     // Función para renderizar 1 página a PNG (canvas → dataURL)
     const renderPage = async (num) => {
       const page = await pdf.getPage(num);
-      // Escala para A4 vertical
-      const viewport = page.getViewport({ scale: 1.2 });
+      // Aumentar la escala para mejor calidad inicial
+      const viewport = page.getViewport({ scale: 1.5 }); // Aumentado de 1.2 a 1.5
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = viewport.width; 
@@ -307,24 +315,23 @@
 
       // Inicializar PageFlip después de cargar todas las imágenes
       flip = new St.PageFlip(container, {
-        width: 800,
-        height: 1130,
+        width: 1000, // Aumentado de 800 a 1000 para mejor calidad
+        height: 1413, // Aumentado proporcionalmente (1000 * 1.413)
         size: "fixed",
         showCover: true, 
         usePortrait: true,
-        flippingTime: 600, // Tiempo de animación más largo para mejor efecto
-        maxShadowOpacity: 0.3, // Sombra más pronunciada
+        flippingTime: 600,
+        maxShadowOpacity: 0.3,
         drawShadow: true,
         mobileScrollSupport: true,
-        minWidth: 800,
-        minHeight: 1130,
-        maxWidth: 800,
-        maxHeight: 1130,
+        minWidth: 1000,
+        minHeight: 1413,
+        maxWidth: 1000,
+        maxHeight: 1413,
         autoSize: false,
-        // Configuraciones adicionales para mejor animación
-        swipeDistance: 30, // Distancia de swipe para activar animación
-        clickToFlip: true, // Permitir clic para voltear
-        disableFlipByClick: false // No desactivar volteo por clic
+        swipeDistance: 30,
+        clickToFlip: true,
+        disableFlipByClick: false
       });
 
       // Cargar todas las imágenes al flipbook
@@ -334,13 +341,13 @@
       setupZoomControls();
       setupDownloadButton();
       
-      // Aplicar zoom inicial de 50%
+      // Aplicar zoom inicial de 75%
       applyZoom();
       
       // Ocultar loader
       loader.style.display = 'none';
 
-      // Controles de teclado mejorados - USAR ANIMACIÓN COMPLETA
+      // Controles de teclado mejorados
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
           e.preventDefault();
@@ -367,16 +374,16 @@
           }
         }
         if (e.key === '0' && !e.ctrlKey) {
-          currentZoom = 0.5; // Reset a 50%
+          currentZoom = 0.75; // Reset a 75%
           applyZoom();
         }
       });
 
-      // Doble clic para resetear zoom a 50%
+      // Doble clic para resetear zoom a 75%
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        currentZoom = 0.5;
+        currentZoom = 0.75;
         applyZoom();
       });
 
