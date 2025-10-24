@@ -61,9 +61,8 @@
 <header><span id="title">Flipbook</span></header>
 <div id="wrap"><div id="book"></div></div>
 <div class="hint">Usa ← → o clic para pasar página. Doble clic para zoom.</div>
-<div id="loader" style="display:none;">Cargando PDF...</div>
+<div id="loader">Cargando PDF...</div>
 
-<!-- Usar versión estable de PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 <script>
@@ -77,41 +76,41 @@
   if (!pdfUrl) {
     document.getElementById('book').innerHTML =
       '<div style="padding:2rem">Falta el parámetro <code>src</code> con la URL del PDF.</div>';
+    document.getElementById('loader').style.display = 'none';
     return;
   }
 
   const container = document.getElementById('book');
   const loader = document.getElementById('loader');
   
-  // Mostrar loader
-  loader.style.display = 'block';
-
   // Configurar PDF.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
   // Usar St.PageFlip que es el nombre correcto en esta versión
   const flip = new St.PageFlip(container, {
     size: "stretch",
-    width: 1024, 
-    height: 700,
+    width: 800,  // Ancho más pequeño para A4 vertical
+    height: 1130, // Alto proporcional para A4 (1.414 relación)
     showCover: true, 
-    usePortrait: true,
+    usePortrait: true, // IMPORTANTE: usar modo retrato
     flippingTime: 600, 
     maxShadowOpacity: 0.2,
     drawShadow: true,
     mobileScrollSupport: true
   });
 
+  // Array para almacenar todas las imágenes
+  let allImages = [];
+
   // Carga y renderiza páginas a imagen bajo demanda
   pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
-    const imgs = [];
-
+    
     // Función para renderizar 1 página a PNG (canvas → dataURL)
     const renderPage = async (num) => {
       const page = await pdf.getPage(num);
-      // Ajusta escala si quieres más/menos detalle
-      const viewport = page.getViewport({ scale: 1.4 });
+      // Escala más pequeña para A4 vertical
+      const viewport = page.getViewport({ scale: 1.2 });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = viewport.width; 
@@ -127,49 +126,60 @@
     };
 
     try {
-      // Carga inicial rápida: 1–2 páginas
-      const first = await renderPage(1);
-      imgs.push(first);
-      if (total >= 2) {
-        const second = await renderPage(2);
-        imgs.push(second);
+      // Cargar TODAS las páginas primero
+      loader.textContent = 'Cargando páginas...';
+      
+      for (let i = 1; i <= total; i++) {
+        loader.textContent = `Cargando página ${i} de ${total}...`;
+        const img = await renderPage(i);
+        allImages.push(img);
       }
-      
-      flip.loadFromImages(imgs);
-      
-      // Ocultar loader cuando se cargan las primeras páginas
-      loader.style.display = 'none';
 
-      // Resto en segundo plano
-      if (total > 2) {
-        for (let i = 3; i <= total; i++) {
-          renderPage(i).then(img => {
-            // Agregar la nueva imagen y actualizar
-            const currentImages = [...flip.images];
-            currentImages.push(img);
-            flip.loadFromImages(currentImages);
-          }).catch(err => {
-            console.error('Error cargando página', i, err);
-          });
-        }
-      }
+      // Cargar todas las imágenes al flipbook
+      flip.loadFromImages(allImages);
+      
+      // Ocultar loader
+      loader.style.display = 'none';
 
       // Controles de teclado mejorados
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') flip.turnToNextPage();
         if (e.key === 'ArrowLeft') flip.turnToPrevPage();
-        if (e.key === '+') flip.zoomIn();
-        if (e.key === '-') flip.zoomOut();
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          flip.zoomIn();
+        }
+        if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          flip.zoomOut();
+        }
         if (e.key === '0') flip.setZoom(1); // Reset zoom
       });
 
-      // Doble clic para zoom (toggle)
+      // Doble clic para zoom (toggle) - PREVENIR cambio de página
       container.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (flip.getZoom() > 1) {
           flip.setZoom(1);
         } else {
           flip.zoomIn();
         }
+      });
+
+      // Prevenir que el clic normal interfiera con el doble clic
+      let clickTimer = null;
+      container.addEventListener('click', (e) => {
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+          // Es un doble clic, ya manejado arriba
+          return;
+        }
+        clickTimer = setTimeout(() => {
+          clickTimer = null;
+          // Cl simple - permitir cambio de página normal
+        }, 300);
       });
 
     } catch (error) {
@@ -180,8 +190,7 @@
   }).catch(err => {
     loader.style.display = 'none';
     container.innerHTML = '<div style="padding:2rem;color:#e66">No se pudo abrir el PDF: ' + err.message +
-                          '<br>Comprueba el enlace o permisos de compartición.' +
-                          '<br>Error detallado: ' + JSON.stringify(err) + '</div>';
+                          '<br>Comprueba el enlace o permisos de compartición.</div>';
     console.error('PDF Error:', err);
   });
 })();
