@@ -5,19 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="doc-title">Visor (Flipbook)</title>
 
-  <!-- PageFlip (efecto revista) -->
-  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/jsowser.min.js</script>
+  <!-- PageFlip (solo JS; NO hay CSS en el paquete) -->
+  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
 
-  <!-- PDF.js -->
+  <!-- PDF.js (librería + worker de la MISMA versión) -->
   https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
   <script>
-    // Worker de PDF.js (misma versión que el script)
-    window.addEventListener('DOMContentLoaded', () => {
-      if (window.pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-      }
-    });
+    // Worker de PDF.js DE LA MISMA VERSIÓN (2.16.105)
+    // (si no coinciden las versiones, PDF.js falla) 
+    // Docs/listado de ficheros: https://cdnjs.com/libraries/pdf.js/2.16.105
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
   </script>
 
   <style>
@@ -35,8 +33,7 @@
     .hint { opacity: .8; font-size: 12px; margin-left: auto; }
     .loader {
       position: absolute; inset: 0; display: grid; place-items: center;
-      background: #0f1115; z-index: 1; font: 500 14px system-ui, Segoe UI, Roboto;
-      text-align: center;
+      background: #0f1115; z-index: 1; font: 500 14px system-ui, Segoe UI, Roboto; text-align: center;
     }
     .progress { margin-top: 8px; color: #b5c3ff; font-size: 12px; }
     a.btn { color: #9ecbff; text-decoration: none; border: 1px solid #2a3a5a; padding: 6px 10px;
@@ -67,7 +64,7 @@
     (async function () {
       const diag = (m) => { const d = document.getElementById('diag'); d.textContent = m; };
 
-      // Comprobación de librerías
+      // Comprobación de librerías cargadas (visibles en pantalla si fallan)
       if (!window.pdfjsLib) { alert('No se ha cargado PDF.js'); diag('pdfjsLib: NO'); return; }
       if (!window.St || !window.St.PageFlip) { alert('No se ha cargado PageFlip'); diag('PageFlip: NO'); return; }
       diag('Librerías OK');
@@ -90,11 +87,11 @@
       }
 
       try {
-        // 1) Cargar PDF
+        // 1) Cargar PDF (tu Worker o una URL pública)
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
-        // 2) Medidas base
+        // 2) Medidas base (proporción de la primera página)
         const firstPage = await pdf.getPage(1);
         const firstViewport = firstPage.getViewport({ scale: 1 });
         const ratio = firstViewport.height / firstViewport.width;
