@@ -63,7 +63,8 @@
 <div class="hint">Usa ← → o clic para pasar página. Doble clic para zoom.</div>
 <div id="loader" style="display:none;">Cargando PDF...</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js"></script>
+<!-- Usar versión estable de PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 <script>
 (function() {
@@ -85,6 +86,9 @@
   // Mostrar loader
   loader.style.display = 'block';
 
+  // Configurar PDF.js
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
   // Usar St.PageFlip que es el nombre correcto en esta versión
   const flip = new St.PageFlip(container, {
     size: "stretch",
@@ -98,23 +102,27 @@
     mobileScrollSupport: true
   });
 
-  const pdfjsLib = window['pdfjsLib'];
-  
   // Carga y renderiza páginas a imagen bajo demanda
-  pdfjsLib.getDocument({ url: pdfUrl }).promise.then(async (pdf) => {
+  pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
     const imgs = [];
 
     // Función para renderizar 1 página a PNG (canvas → dataURL)
     const renderPage = async (num) => {
       const page = await pdf.getPage(num);
-      // Ajusta escala si quieres más/meos detalle
+      // Ajusta escala si quieres más/menos detalle
       const viewport = page.getViewport({ scale: 1.4 });
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d', { willReadFrequently: false });
+      const ctx = canvas.getContext('2d');
       canvas.width = viewport.width; 
       canvas.height = viewport.height;
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      
+      const renderContext = {
+        canvasContext: ctx,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
       return canvas.toDataURL('image/png');
     };
 
@@ -122,21 +130,28 @@
       // Carga inicial rápida: 1–2 páginas
       const first = await renderPage(1);
       imgs.push(first);
-      if (total >= 2) imgs.push(await renderPage(2));
+      if (total >= 2) {
+        const second = await renderPage(2);
+        imgs.push(second);
+      }
+      
       flip.loadFromImages(imgs);
       
       // Ocultar loader cuando se cargan las primeras páginas
       loader.style.display = 'none';
 
       // Resto en segundo plano
-      for (let i = 3; i <= total; i++) {
-        renderPage(i).then(img => {
-          flip.images.push(img);
-          // Actualizar el flipbook con las nuevas imágenes
-          if (i === total) {
-            flip.update();
-          }
-        });
+      if (total > 2) {
+        for (let i = 3; i <= total; i++) {
+          renderPage(i).then(img => {
+            // Agregar la nueva imagen y actualizar
+            const currentImages = [...flip.images];
+            currentImages.push(img);
+            flip.loadFromImages(currentImages);
+          }).catch(err => {
+            console.error('Error cargando página', i, err);
+          });
+        }
       }
 
       // Controles de teclado mejorados
@@ -160,11 +175,14 @@
     } catch (error) {
       loader.style.display = 'none';
       container.innerHTML = '<div style="padding:2rem;color:#e66">Error al renderizar páginas: ' + error.message + '</div>';
+      console.error('Error:', error);
     }
   }).catch(err => {
     loader.style.display = 'none';
     container.innerHTML = '<div style="padding:2rem;color:#e66">No se pudo abrir el PDF: ' + err.message +
-                          '<br>Comprueba el enlace o permisos de compartición.</div>';
+                          '<br>Comprueba el enlace o permisos de compartición.' +
+                          '<br>Error detallado: ' + JSON.stringify(err) + '</div>';
+    console.error('PDF Error:', err);
   });
 })();
 </script>
