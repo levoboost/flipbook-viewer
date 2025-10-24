@@ -63,8 +63,9 @@
     margin: 20px 0; /* Margen para mejor visualización */
   }
   #book {
-    width: 800px;
-    height: 1130px;
+    width: 1000px;
+    height: 1413px;
+    position: relative;
   }
   .hint {
     position: fixed;
@@ -133,7 +134,7 @@
     <div id="book"></div>
   </div>
 </div>
-<div class="hint">Usa ← → o clic para pasar página. Scroll para navegar en zoom. Controles de zoom arriba.</div>
+<div class="hint">Usa ← → o clic en los bordes para pasar página. Scroll para navegar en zoom. Controles de zoom arriba.</div>
 <div id="loader">Cargando PDF...</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -347,7 +348,7 @@
       // Ocultar loader
       loader.style.display = 'none';
 
-      // Controles de teclado mejorados
+      // Controles de teclado mejorados - AMBAS DIRECCIONES FUNCIONAN
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
           e.preventDefault();
@@ -387,19 +388,32 @@
         applyZoom();
       });
 
-      // Clic simple para voltear páginas con animación
+      // Clic en áreas específicas para voltear páginas - CORREGIDO
       container.addEventListener('click', (e) => {
         const rect = container.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
         
-        // Si se hace clic en la mitad derecha, siguiente página
-        // Si se hace clic en la mitad izquierda, página anterior
-        if (clickX > rect.width / 2) {
+        // Solo activar en los bordes laterales (primeros y últimos 100px)
+        const edgeWidth = 100;
+        
+        // Si se hace clic en el borde derecho
+        if (clickX > rect.width - edgeWidth) {
           navigateWithAnimation('next');
-        } else {
+        }
+        // Si se hace clic en el borde izquierdo  
+        else if (clickX < edgeWidth) {
           navigateWithAnimation('prev');
         }
+        // Si se hace clic en el centro, no hacer nada (para lectura)
       });
+
+      // También configurar el evento de clic nativo de PageFlip
+      if (flip && flip.on) {
+        flip.on('flip', (e) => {
+          console.log('Flip event:', e);
+        });
+      }
 
       // Inicializar estado del zoom
       updateZoomDisplay();
