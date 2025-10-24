@@ -5,15 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="doc-title">Visor (Flipbook)</title>
 
-  <!-- PageFlip (efecto “revista”) -->
-  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css?v=1
-  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js?v=1</script>
+  <!-- PageFlip (SOLO JS; NO hay CSS en el paquete) -->
+  https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js</script>
 
-  <!-- PDF.js (para leer el PDF en el navegador) -->
+  <!-- PDF.js -->
   https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js</script>
   <script>
-    // Configura el worker de PDF.js (MISMA versión que el script)
-    // Debe definirse antes de llamar a getDocument(...)
+    // Worker de PDF.js (misma versión que el script)
+    // Doc oficial "Getting started"
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
@@ -67,9 +66,9 @@
 
   <script>
     (async function () {
-      const diag = (msg) => { const d = document.getElementById('diag'); d.textContent = msg; };
+      const diag = (m) => { const d = document.getElementById('diag'); d.textContent = m; };
 
-      // Comprobación de librerías (debe existir pdfjsLib y St.PageFlip)
+      // Comprobación de librerías
       if (!window.pdfjsLib) { alert('No se ha cargado PDF.js'); diag('pdfjsLib: NO'); return; }
       if (!window.St || !window.St.PageFlip) { alert('No se ha cargado PageFlip'); diag('PageFlip: NO'); return; }
       diag('Librerías OK');
@@ -92,7 +91,7 @@
       }
 
       try {
-        // 1) Carga PDF
+        // 1) Carga PDF (desde tu Worker o URL pública)
         const loadingTask = pdfjsLib.getDocument({ url: pdfUrl });
         const pdf = await loadingTask.promise;
 
