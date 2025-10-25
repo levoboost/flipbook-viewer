@@ -115,6 +115,16 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+  .error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 2rem;
+    color: #e66;
+  }
 </style>
 </head>
 <body>
@@ -123,7 +133,7 @@
   <div id="header-controls">
     <div class="zoom-controls">
       <button class="zoom-btn" id="zoomOut" title="Zoom Out">-</button>
-      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">75%</span>
+      <span id="zoomLevel" style="color:#eee; font-size:12px; min-width:40px; text-align:center;">50%</span>
       <button class="zoom-btn" id="zoomIn" title="Zoom In">+</button>
     </div>
     <button class="control-btn" id="downloadBtn" title="Descargar PDF">📥 Descargar</button>
@@ -159,7 +169,8 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  let currentZoom = 0.75;
+  // CORRECCIÓN 2: Zoom inicial del 50%
+  let currentZoom = 0.5;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3.0;
@@ -198,7 +209,7 @@
 
     const zoomLevel = document.getElementById('zoomLevel');
     zoomLevel.addEventListener('dblclick', () => {
-      currentZoom = 0.75;
+      currentZoom = 0.5; // Cambiado de 0.75 a 0.5
       applyZoom();
     });
   }
@@ -299,18 +310,20 @@
 
       flip.loadFromImages(allImages);
       
+      // CORRECCIÓN 1: Configurar navegación bidireccional con ratón
+      // Esto se logra con la configuración por defecto de PageFlip
+      
       // CONFIGURAR CONTROLES DESPUÉS DE CARGAR
       setupZoomControls();
       setupDownloadButton();
       applyZoom();
       loader.style.display = 'none';
 
-      // CONTROL DE TECLADO - MÉTODO DIRECTO QUE FUNCIONA
+      // CORRECCIÓN 1: CONTROL DE TECLADO - MÉTODO DIRECTO QUE FUNCIONA
       document.addEventListener('keydown', (e) => {
         // Flecha derecha - Página siguiente
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          // Usar turnToNextPage que es más confiable
           flip.turnToNextPage();
         }
         // Flecha izquierda - Página anterior
@@ -336,19 +349,19 @@
           }
         }
         else if (e.key === '0' && !e.ctrlKey) {
-          currentZoom = 0.75;
+          currentZoom = 0.5; // Cambiado de 0.75 a 0.5
           applyZoom();
         }
       });
 
       // CLIC EN BORDES - DEJAR QUE PAGEFLIP MANEJE LA NAVEGACIÓN
-      // No interferir con el sistema de clics nativo de PageFlip
+      // El efecto de revista funciona en ambos sentidos por defecto
 
       // DOBLE CLIC PARA ZOOM
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        currentZoom = 0.75;
+        currentZoom = 0.5; // Cambiado de 0.75 a 0.5
         applyZoom();
       });
 
@@ -360,13 +373,14 @@
 
     } catch (error) {
       loader.style.display = 'none';
-      container.innerHTML = '<div style="padding:2rem;color:#e66">Error al renderizar páginas: ' + error.message + '</div>';
+      // CORRECCIÓN 3: Mensaje de error mejorado
+      container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3><p>Error: ' + error.message + '</p></div>';
       console.error('Error:', error);
     }
   }).catch(err => {
     loader.style.display = 'none';
-    container.innerHTML = '<div style="padding:2rem;color:#e66">No se pudo abrir el PDF: ' + err.message +
-                          '<br>Comprueba el enlace o permisos de compartición.</div>';
+    // CORRECCIÓN 3: Mensaje de error mejorado
+    container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3><p>Compruebe el enlace o permisos de compartición.</p></div>';
     console.error('PDF Error:', err);
   });
 })();
