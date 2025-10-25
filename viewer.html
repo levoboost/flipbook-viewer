@@ -124,6 +124,11 @@
     text-align: center;
     padding: 2rem;
     color: #e66;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
 </style>
 </head>
@@ -158,7 +163,7 @@
 
   if (!pdfUrl) {
     document.getElementById('book').innerHTML =
-      '<div style="padding:2rem">Falta el parámetro <code>src</code> con la URL del PDF.</div>';
+      '<div class="error-message">Falta el parámetro <code>src</code> con la URL del PDF.</div>';
     document.getElementById('loader').style.display = 'none';
     return;
   }
@@ -169,7 +174,7 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  // CORRECCIÓN 2: Zoom inicial del 50%
+  // Zoom inicial del 50%
   let currentZoom = 0.5;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
@@ -209,7 +214,7 @@
 
     const zoomLevel = document.getElementById('zoomLevel');
     zoomLevel.addEventListener('dblclick', () => {
-      currentZoom = 0.5; // Cambiado de 0.75 a 0.5
+      currentZoom = 0.5;
       applyZoom();
     });
   }
@@ -290,7 +295,7 @@
         allImages.push(img);
       }
 
-      // CONFIGURACIÓN SIMPLIFICADA Y FUNCIONAL
+      // CONFIGURACIÓN PARA EFECTO DE REVISTA EN AMBAS DIRECCIONES
       flip = new St.PageFlip(container, {
         width: 1000,
         height: 1413,
@@ -310,26 +315,49 @@
 
       flip.loadFromImages(allImages);
       
-      // CORRECCIÓN 1: Configurar navegación bidireccional con ratón
-      // Esto se logra con la configuración por defecto de PageFlip
-      
       // CONFIGURAR CONTROLES DESPUÉS DE CARGAR
       setupZoomControls();
       setupDownloadButton();
       applyZoom();
       loader.style.display = 'none';
 
-      // CORRECCIÓN 1: CONTROL DE TECLADO - MÉTODO DIRECTO QUE FUNCIONA
+      // CONTROL DE TECLADO - SIMULAR INTERACCIÓN DE RATÓN PARA EFECTO COMPLETO
       document.addEventListener('keydown', (e) => {
-        // Flecha derecha - Página siguiente
+        // Flecha derecha - Página siguiente con efecto completo
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          flip.turnToNextPage();
+          // Simular clic en el borde derecho para el efecto de pasar página
+          const bookRect = container.getBoundingClientRect();
+          const clickX = bookRect.right - 10;
+          const clickY = bookRect.top + bookRect.height / 2;
+          
+          const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            clientX: clickX,
+            clientY: clickY
+          });
+          
+          container.dispatchEvent(event);
         }
-        // Flecha izquierda - Página anterior
+        // Flecha izquierda - Página anterior con efecto completo
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          flip.turnToPrevPage();
+          // Simular clic en el borde izquierdo para el efecto de pasar página
+          const bookRect = container.getBoundingClientRect();
+          const clickX = bookRect.left + 10;
+          const clickY = bookRect.top + bookRect.height / 2;
+          
+          const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            clientX: clickX,
+            clientY: clickY
+          });
+          
+          container.dispatchEvent(event);
         }
         // Controles de zoom
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
@@ -349,19 +377,16 @@
           }
         }
         else if (e.key === '0' && !e.ctrlKey) {
-          currentZoom = 0.5; // Cambiado de 0.75 a 0.5
+          currentZoom = 0.5;
           applyZoom();
         }
       });
-
-      // CLIC EN BORDES - DEJAR QUE PAGEFLIP MANEJE LA NAVEGACIÓN
-      // El efecto de revista funciona en ambos sentidos por defecto
 
       // DOBLE CLIC PARA ZOOM
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        currentZoom = 0.5; // Cambiado de 0.75 a 0.5
+        currentZoom = 0.5;
         applyZoom();
       });
 
@@ -373,14 +398,12 @@
 
     } catch (error) {
       loader.style.display = 'none';
-      // CORRECCIÓN 3: Mensaje de error mejorado
-      container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3><p>Error: ' + error.message + '</p></div>';
+      container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
       console.error('Error:', error);
     }
   }).catch(err => {
     loader.style.display = 'none';
-    // CORRECCIÓN 3: Mensaje de error mejorado
-    container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3><p>Compruebe el enlace o permisos de compartición.</p></div>';
+    container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
     console.error('PDF Error:', err);
   });
 })();
