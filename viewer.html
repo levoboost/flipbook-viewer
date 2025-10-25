@@ -116,19 +116,16 @@
     cursor: not-allowed;
   }
   .error-message {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    text-align: center;
-    padding: 2rem;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 8px;
     color: #e66;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    z-index: 1000;
+    text-align: center;
   }
 </style>
 </head>
@@ -162,9 +159,7 @@
   document.getElementById('title').textContent = '📖 ' + docTitle;
 
   if (!pdfUrl) {
-    document.getElementById('book').innerHTML =
-      '<div class="error-message">Falta el parámetro <code>src</code> con la URL del PDF.</div>';
-    document.getElementById('loader').style.display = 'none';
+    document.getElementById('loader').innerHTML = '<div class="error-message">Falta el parámetro <code>src</code> con la URL del PDF.</div>';
     return;
   }
 
@@ -321,43 +316,17 @@
       applyZoom();
       loader.style.display = 'none';
 
-      // CONTROL DE TECLADO - SIMULAR INTERACCIÓN DE RATÓN PARA EFECTO COMPLETO
+      // CONTROL DE TECLADO - USANDO LOS MÉTODOS DIRECTOS DE PAGEFLIP
       document.addEventListener('keydown', (e) => {
-        // Flecha derecha - Página siguiente con efecto completo
+        // Flecha derecha - Página siguiente
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          // Simular clic en el borde derecho para el efecto de pasar página
-          const bookRect = container.getBoundingClientRect();
-          const clickX = bookRect.right - 10;
-          const clickY = bookRect.top + bookRect.height / 2;
-          
-          const event = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            clientX: clickX,
-            clientY: clickY
-          });
-          
-          container.dispatchEvent(event);
+          flip.flipNext();
         }
-        // Flecha izquierda - Página anterior con efecto completo
+        // Flecha izquierda - Página anterior
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          // Simular clic en el borde izquierdo para el efecto de pasar página
-          const bookRect = container.getBoundingClientRect();
-          const clickX = bookRect.left + 10;
-          const clickY = bookRect.top + bookRect.height / 2;
-          
-          const event = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            clientX: clickX,
-            clientY: clickY
-          });
-          
-          container.dispatchEvent(event);
+          flip.flipPrev();
         }
         // Controles de zoom
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
@@ -397,13 +366,11 @@
       console.log('Número de páginas:', allImages.length);
 
     } catch (error) {
-      loader.style.display = 'none';
-      container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
+      loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
       console.error('Error:', error);
     }
   }).catch(err => {
-    loader.style.display = 'none';
-    container.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
+    loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
     console.error('PDF Error:', err);
   });
 })();
