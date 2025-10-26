@@ -290,7 +290,7 @@
         allImages.push(img);
       }
 
-      // CONFIGURACIÓN PARA EFECTO DE REVISTA EN AMBAS DIRECCIONES
+      // CONFIGURACIÓN PARA EL MISMO EFECTO EN AMBAS DIRECCIONES
       flip = new St.PageFlip(container, {
         width: 1000,
         height: 1413,
@@ -305,7 +305,9 @@
         minHeight: 1413,
         maxWidth: 1000,
         maxHeight: 1413,
-        autoSize: false
+        autoSize: false,
+        // FORZAR EL MISMO TIPO DE FLIP EN AMBAS DIRECCIONES
+        useMouseEvents: true
       });
 
       flip.loadFromImages(allImages);
