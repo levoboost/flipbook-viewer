@@ -169,49 +169,30 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  // Zoom inicial del 50%
   let currentZoom = 0.5;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3.0;
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
   let allImages = [];
 
   function applyZoom() {
     zoomContainer.style.transform = `scale(${currentZoom})`;
     updateZoomDisplay();
-    setTimeout(() => {
-      wrap.scrollTop = 0;
-    }, 100);
+    setTimeout(() => { wrap.scrollTop = 0; }, 100);
   }
 
   function setupZoomControls() {
     const zoomIn = document.getElementById('zoomIn');
     const zoomOut = document.getElementById('zoomOut');
-
     zoomIn.addEventListener('click', () => {
-      if (currentZoom < MAX_ZOOM) {
-        currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
-        currentZoom = Math.round(currentZoom * 100) / 100;
-        applyZoom();
-      }
+      if (currentZoom < MAX_ZOOM) { currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP); applyZoom(); }
     });
-
     zoomOut.addEventListener('click', () => {
-      if (currentZoom > MIN_ZOOM) {
-        currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
-        currentZoom = Math.round(currentZoom * 100) / 100;
-        applyZoom();
-      }
+      if (currentZoom > MIN_ZOOM) { currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP); applyZoom(); }
     });
-
-    const zoomLevel = document.getElementById('zoomLevel');
-    zoomLevel.addEventListener('dblclick', () => {
-      currentZoom = 0.5;
-      applyZoom();
-    });
+    document.getElementById('zoomLevel').addEventListener('dblclick', () => { currentZoom = 0.5; applyZoom(); });
   }
 
   function updateZoomDisplay() {
@@ -223,140 +204,102 @@
 
   function setupDownloadButton() {
     const downloadBtn = document.getElementById('downloadBtn');
-    
     downloadBtn.addEventListener('click', async () => {
       try {
         downloadBtn.textContent = '⏳ Descargando...';
         downloadBtn.disabled = true;
-        
         const response = await fetch(pdfUrl);
         if (!response.ok) throw new Error('Error en la descarga');
         const blob = await response.blob();
-        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = "Informe_Estrategico_IA_Comercial.pdf";
-        document.body.appendChild(a);
-        a.click();
+        a.href = url; a.download = "Informe.pdf"; a.click();
         window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
         downloadBtn.textContent = '✅ Descargado';
-        setTimeout(() => {
-          downloadBtn.textContent = '📥 Descargar';
-          downloadBtn.disabled = false;
-        }, 2000);
-        
-      } catch (error) {
-        console.error('Error al descargar:', error);
+        setTimeout(() => { downloadBtn.textContent = '📥 Descargar'; downloadBtn.disabled = false; }, 2000);
+      } catch {
         downloadBtn.textContent = '❌ Error';
-        setTimeout(() => {
-          downloadBtn.textContent = '📥 Descargar';
-          downloadBtn.disabled = false;
-        }, 2000);
-        alert('Error al descargar el PDF. Puede intentar descargarlo directamente desde: ' + pdfUrl);
+        setTimeout(() => { downloadBtn.textContent = '📥 Descargar'; downloadBtn.disabled = false; }, 2000);
+        alert('Error al descargar el PDF. Intente abrirlo directamente: ' + pdfUrl);
       }
     });
   }
 
   pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
-    
     const renderPage = async (num) => {
       const page = await pdf.getPage(num);
       const viewport = page.getViewport({ scale: 1.5 });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      canvas.width = viewport.width; 
-      canvas.height = viewport.height;
-      
-      const renderContext = {
-        canvasContext: ctx,
-        viewport: viewport
-      };
-      
-      await page.render(renderContext).promise;
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
       return canvas.toDataURL('image/png');
     };
 
-    try {
-      loader.textContent = 'Cargando páginas...';
-      
-      for (let i = 1; i <= total; i++) {
-        loader.textContent = `Cargando página ${i} de ${total}...`;
-        const img = await renderPage(i);
-        allImages.push(img);
-      }
-
-      // === CAMBIO APLICADO: MISMA TRANSICIÓN EN AMBAS DIRECCIONES ===
-      flip = new St.PageFlip(container, {
-        width: 1000,
-        height: 1413,
-        size: "fixed",
-        showCover: true, 
-        usePortrait: true,
-        flippingTime: 600,
-        maxShadowOpacity: 0.3,
-        drawShadow: true,
-        mobileScrollSupport: false,
-        autoSize: false,
-        useMouseEvents: true,
-        direction: "ltr" // mantiene el mismo sentido visual al ir hacia atrás
-      });
-
-      flip.loadFromImages(allImages);
-      
-      setupZoomControls();
-      setupDownloadButton();
-      applyZoom();
-      loader.style.display = 'none';
-
-      // Mantener mismo efecto de paso de página
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          flip.flipNext();
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          flip.flipPrev(); // ahora usa la misma animación "page curl" que flipNext()
-        } else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
-          e.preventDefault();
-          if (currentZoom < MAX_ZOOM) {
-            currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
-            applyZoom();
-          }
-        } else if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
-          e.preventDefault();
-          if (currentZoom > MIN_ZOOM) {
-            currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
-            applyZoom();
-          }
-        } else if (e.key === '0' && !e.ctrlKey) {
-          currentZoom = 0.5;
-          applyZoom();
-        }
-      });
-
-      container.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-        currentZoom = 0.5;
-        applyZoom();
-      });
-
-      updateZoomDisplay();
-
-    } catch (error) {
-      loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
-      console.error('Error:', error);
+    loader.textContent = 'Cargando páginas...';
+    for (let i = 1; i <= total; i++) {
+      loader.textContent = `Cargando página ${i} de ${total}...`;
+      allImages.push(await renderPage(i));
     }
-  }).catch(err => {
+
+    flip = new St.PageFlip(container, {
+      width: 1000,
+      height: 1413,
+      size: "fixed",
+      showCover: true, 
+      usePortrait: true,
+      flippingTime: 650,
+      maxShadowOpacity: 0.35,
+      drawShadow: true,
+      mobileScrollSupport: false,
+      autoSize: false,
+      useMouseEvents: true,
+      direction: "ltr",
+      tilt: 0.02 // pequeña inclinación en ambas direcciones
+    });
+
+    flip.loadFromImages(allImages);
+    setupZoomControls(); setupDownloadButton(); applyZoom();
+    loader.style.display = 'none';
+
+    // === EFECTO REALISTA DE RETROCESO ===
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        flip.flipNext();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        // misma animación y curvatura hacia atrás
+        const current = flip.getCurrentPageIndex();
+        if (current > 0) {
+          flip.flip(current - 1, 'bottom-left');
+        }
+      } else if (e.key === '+' || e.key === '=') {
+        currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP); applyZoom();
+      } else if (e.key === '-' || e.key === '_') {
+        currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP); applyZoom();
+      } else if (e.key === '0') {
+        currentZoom = 0.5; applyZoom();
+      }
+    });
+
+    // mismo efecto con clic en el borde izquierdo
+    container.addEventListener('click', (e) => {
+      const rect = container.getBoundingClientRect();
+      if (e.clientX > rect.width * 0.6) flip.flipNext();
+      else if (e.clientX < rect.width * 0.4) {
+        const current = flip.getCurrentPageIndex();
+        if (current > 0) flip.flip(current - 1, 'bottom-left');
+      }
+    });
+
+  }).catch(() => {
     loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
-    console.error('PDF Error:', err);
   });
 })();
 </script>
 </body>
 </html>
+
 
