@@ -127,6 +127,16 @@
     z-index: 1000;
     text-align: center;
   }
+  
+  /* FORZAR MISMA ANIMACIÓN EN AMBAS DIRECCIONES */
+  .stf__parent .stf__block .stf__item {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  .stf__parent .stf__block.--left .stf__item,
+  .stf__parent .stf__block.--right .stf__item {
+    transform-origin: center !important;
+  }
 </style>
 </head>
 <body>
@@ -169,7 +179,6 @@
   const loader = document.getElementById('loader');
   let flip;
   
-  // Zoom inicial del 50%
   let currentZoom = 0.5;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
@@ -305,7 +314,7 @@
         maxWidth: 1000,
         maxHeight: 1413,
         autoSize: false,
-        useMouseEvents: false
+        useMouseEvents: true
       });
 
       flip.loadFromImages(allImages);
@@ -315,37 +324,14 @@
       applyZoom();
       loader.style.display = 'none';
 
-      // Interceptar eventos de mouse para controlar manualmente el flip
-      container.addEventListener('mousedown', (e) => {
-        const rect = container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const width = rect.width;
-        
-        if (x < width / 2) {
-          e.preventDefault();
-          e.stopPropagation();
-          const currentPage = flip.getCurrentPageIndex();
-          if (currentPage > 0) {
-            flip.flip(currentPage - 1, 'top');
-          }
-        } else {
-          e.preventDefault();
-          e.stopPropagation();
-          flip.flipNext('top');
-        }
-      });
-
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          flip.flipNext('top');
+          flip.flipNext();
         }
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          const currentPage = flip.getCurrentPageIndex();
-          if (currentPage > 0) {
-            flip.flip(currentPage - 1, 'top');
-          }
+          flip.flipPrev();
         }
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
