@@ -290,11 +290,14 @@
         allImages.push(img);
       }
 
+      // CONFIGURACIÓN PARA EL MISMO EFECTO EN AMBAS DIRECCIONES
       flip = new St.PageFlip(container, {
         width: 1000,
         height: 1413,
         size: "fixed",
-        showCover: true, 
+        /* --- ÚNICO CAMBIO REALIZADO --- */
+        showCover: false, 
+        /* ------------------------------ */
         usePortrait: true,
         flippingTime: 600,
         maxShadowOpacity: 0.3,
@@ -306,8 +309,7 @@
         maxHeight: 1413,
         autoSize: false,
         // FORZAR EL MISMO TIPO DE FLIP EN AMBAS DIRECCIONES
-        useMouseEvents: true,
-        tilt: 0.02
+        useMouseEvents: true
       });
 
       flip.loadFromImages(allImages);
@@ -325,14 +327,10 @@
           e.preventDefault();
           flip.flipNext();
         }
-        // Flecha izquierda - Página anterior (MISMO EFECTO VISUAL)
+        // Flecha izquierda - Página anterior
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          const current = flip.getCurrentPageIndex();
-          if (current > 0) {
-            // forzamos la animación usando la misma esquina que flipNext
-            flip.flip(current - 1, 'bottom-right');
-          }
+          flip.flipPrev();
         }
         // Controles de zoom
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
@@ -379,26 +377,7 @@
     loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
     console.error('PDF Error:', err);
   });
-
-  // CLIC EN BORDES: usa coordenada local (e.clientX - rect.left) para detectar correctamente izquierda/derecha
-  // y fuerza la misma animación de "page curl" cuando se retrocede.
-  container.addEventListener('click', (e) => {
-    const rect = container.getBoundingClientRect();
-    const localX = e.clientX - rect.left; // posición X dentro del elemento
-    const w = rect.width;
-    if (localX > w * 0.6) {
-      flip && flip.flipNext();
-    } else if (localX < w * 0.4) {
-      const current = flip && flip.getCurrentPageIndex && flip.getCurrentPageIndex();
-      if (current > 0) {
-        flip.flip(current - 1, 'bottom-right');
-      }
-    }
-  });
-
 })();
 </script>
 </body>
 </html>
-
-
