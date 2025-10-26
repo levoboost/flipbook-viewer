@@ -4,8 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Flipbook Viewer</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/css/page-flip.css" />
 <style>
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     background: #111;
@@ -18,7 +18,7 @@
     background: #111;
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 100;
     border-bottom: 1px solid #222;
     display: flex;
     justify-content: space-between;
@@ -43,12 +43,9 @@
     font-size: 14px;
     transition: background 0.2s;
   }
-  .control-btn:hover {
-    background: #444;
-  }
-  .control-btn:active {
-    background: #555;
-  }
+  .control-btn:hover { background: #444; }
+  .control-btn:active { background: #555; }
+  
   #wrap {
     display: flex;
     justify-content: center;
@@ -62,11 +59,47 @@
     transition: transform 0.3s ease;
     margin: 20px 0;
   }
-  #book {
+  
+  #book-container {
     width: 1000px;
     height: 1413px;
     position: relative;
+    perspective: 2000px;
+    background: #222;
   }
+  
+  .page {
+    position: absolute;
+    width: 500px;
+    height: 1413px;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  }
+  
+  .page-left {
+    left: 0;
+    transform-origin: right center;
+  }
+  
+  .page-right {
+    right: 0;
+    transform-origin: left center;
+  }
+  
+  .page.flipping {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+  
+  .page.flip-forward {
+    transform: rotateY(-180deg);
+  }
+  
+  .page.flip-backward {
+    transform: rotateY(180deg);
+  }
+  
   .hint {
     position: fixed;
     bottom: 10px;
@@ -79,6 +112,7 @@
     background: rgba(0,0,0,0.7);
     padding: 5px;
   }
+  
   #loader {
     position: fixed;
     top: 50%;
@@ -90,11 +124,13 @@
     color: white;
     z-index: 1000;
   }
+  
   .zoom-controls {
     display: flex;
     gap: 5px;
     align-items: center;
   }
+  
   .zoom-btn {
     background: #333;
     border: 1px solid #555;
@@ -108,13 +144,13 @@
     justify-content: center;
     font-weight: bold;
   }
-  .zoom-btn:hover {
-    background: #444;
-  }
+  
+  .zoom-btn:hover { background: #444; }
   .zoom-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+  
   .error-message {
     position: fixed;
     top: 50%;
@@ -128,15 +164,17 @@
     text-align: center;
   }
   
-  /* FORZAR MISMA ANIMACIÓN EN AMBAS DIRECCIONES */
-  .stf__parent .stf__block .stf__item {
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  .click-area {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 5;
   }
   
-  .stf__parent .stf__block.--left .stf__item,
-  .stf__parent .stf__block.--right .stf__item {
-    transform-origin: center !important;
-  }
+  .click-area-left { left: 0; }
+  .click-area-right { right: 0; }
 </style>
 </head>
 <body>
@@ -153,14 +191,16 @@
 </header>
 <div id="wrap">
   <div id="zoom-container">
-    <div id="book"></div>
+    <div id="book-container">
+      <div class="click-area click-area-left"></div>
+      <div class="click-area click-area-right"></div>
+    </div>
   </div>
 </div>
 <div class="hint">Usa ← → o clic en los bordes para pasar página. Scroll para navegar en zoom.</div>
 <div id="loader">Cargando PDF...</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 <script>
 (function() {
   const params = new URLSearchParams(location.search);
@@ -173,34 +213,30 @@
     return;
   }
 
-  const container = document.getElementById('book');
+  const container = document.getElementById('book-container');
   const zoomContainer = document.getElementById('zoom-container');
   const wrap = document.getElementById('wrap');
   const loader = document.getElementById('loader');
-  let flip;
   
   let currentZoom = 0.5;
   const ZOOM_STEP = 0.25;
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3.0;
+  
+  let allImages = [];
+  let currentPage = 0;
+  let isFlipping = false;
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  let allImages = [];
 
   function applyZoom() {
     zoomContainer.style.transform = `scale(${currentZoom})`;
     updateZoomDisplay();
-    setTimeout(() => {
-      wrap.scrollTop = 0;
-    }, 100);
+    setTimeout(() => wrap.scrollTop = 0, 100);
   }
 
   function setupZoomControls() {
-    const zoomIn = document.getElementById('zoomIn');
-    const zoomOut = document.getElementById('zoomOut');
-
-    zoomIn.addEventListener('click', () => {
+    document.getElementById('zoomIn').addEventListener('click', () => {
       if (currentZoom < MAX_ZOOM) {
         currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
         currentZoom = Math.round(currentZoom * 100) / 100;
@@ -208,7 +244,7 @@
       }
     });
 
-    zoomOut.addEventListener('click', () => {
+    document.getElementById('zoomOut').addEventListener('click', () => {
       if (currentZoom > MIN_ZOOM) {
         currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
         currentZoom = Math.round(currentZoom * 100) / 100;
@@ -216,16 +252,14 @@
       }
     });
 
-    const zoomLevel = document.getElementById('zoomLevel');
-    zoomLevel.addEventListener('dblclick', () => {
+    document.getElementById('zoomLevel').addEventListener('dblclick', () => {
       currentZoom = 0.5;
       applyZoom();
     });
   }
 
   function updateZoomDisplay() {
-    const zoomLevel = document.getElementById('zoomLevel');
-    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+    document.getElementById('zoomLevel').textContent = Math.round(currentZoom * 100) + '%';
     document.getElementById('zoomIn').disabled = currentZoom >= MAX_ZOOM;
     document.getElementById('zoomOut').disabled = currentZoom <= MIN_ZOOM;
   }
@@ -270,6 +304,68 @@
     });
   }
 
+  function renderPages() {
+    container.querySelectorAll('.page').forEach(p => p.remove());
+    
+    const leftIdx = currentPage;
+    const rightIdx = currentPage + 1;
+    
+    if (leftIdx >= 0 && leftIdx < allImages.length) {
+      const leftPage = document.createElement('div');
+      leftPage.className = 'page page-left';
+      leftPage.style.backgroundImage = `url(${allImages[leftIdx]})`;
+      container.appendChild(leftPage);
+    }
+    
+    if (rightIdx < allImages.length) {
+      const rightPage = document.createElement('div');
+      rightPage.className = 'page page-right';
+      rightPage.style.backgroundImage = `url(${allImages[rightIdx]})`;
+      container.appendChild(rightPage);
+    }
+  }
+
+  function flipNext() {
+    if (isFlipping || currentPage >= allImages.length - 2) return;
+    isFlipping = true;
+    
+    const rightPage = container.querySelector('.page-right');
+    if (rightPage) {
+      rightPage.classList.add('flipping', 'flip-forward');
+      
+      setTimeout(() => {
+        currentPage += 2;
+        renderPages();
+        isFlipping = false;
+      }, 600);
+    }
+  }
+
+  function flipPrev() {
+    if (isFlipping || currentPage <= 0) return;
+    isFlipping = true;
+    
+    currentPage -= 2;
+    renderPages();
+    
+    setTimeout(() => {
+      const rightPage = container.querySelector('.page-right');
+      if (rightPage) {
+        rightPage.style.transform = 'rotateY(180deg)';
+        rightPage.classList.add('flipping');
+        
+        setTimeout(() => {
+          rightPage.style.transform = 'rotateY(0deg)';
+          setTimeout(() => {
+            isFlipping = false;
+          }, 600);
+        }, 50);
+      } else {
+        isFlipping = false;
+      }
+    }, 50);
+  }
+
   pdfjsLib.getDocument(pdfUrl).promise.then(async (pdf) => {
     const total = pdf.numPages;
     
@@ -281,12 +377,7 @@
       canvas.width = viewport.width; 
       canvas.height = viewport.height;
       
-      const renderContext = {
-        canvasContext: ctx,
-        viewport: viewport
-      };
-      
-      await page.render(renderContext).promise;
+      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
       return canvas.toDataURL('image/png');
     };
 
@@ -299,39 +390,23 @@
         allImages.push(img);
       }
 
-      flip = new St.PageFlip(container, {
-        width: 1000,
-        height: 1413,
-        size: "fixed",
-        showCover: true, 
-        usePortrait: true,
-        flippingTime: 600,
-        maxShadowOpacity: 0.3,
-        drawShadow: true,
-        mobileScrollSupport: false,
-        minWidth: 1000,
-        minHeight: 1413,
-        maxWidth: 1000,
-        maxHeight: 1413,
-        autoSize: false,
-        useMouseEvents: true
-      });
-
-      flip.loadFromImages(allImages);
-      
+      renderPages();
       setupZoomControls();
       setupDownloadButton();
       applyZoom();
       loader.style.display = 'none';
 
+      document.querySelector('.click-area-left').addEventListener('click', flipPrev);
+      document.querySelector('.click-area-right').addEventListener('click', flipNext);
+
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          flip.flipNext();
+          flipNext();
         }
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          flip.flipPrev();
+          flipPrev();
         }
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
@@ -357,15 +432,11 @@
 
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
-        e.stopPropagation();
         currentZoom = 0.5;
         applyZoom();
       });
 
       updateZoomDisplay();
-
-      console.log('PageFlip cargado:', flip);
-      console.log('Número de páginas:', allImages.length);
 
     } catch (error) {
       loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
