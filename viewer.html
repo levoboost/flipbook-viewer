@@ -305,8 +305,7 @@
         maxWidth: 1000,
         maxHeight: 1413,
         autoSize: false,
-        useMouseEvents: true,
-        swipeDistance: 30
+        useMouseEvents: false
       });
 
       flip.loadFromImages(allImages);
@@ -316,6 +315,26 @@
       applyZoom();
       loader.style.display = 'none';
 
+      // Interceptar eventos de mouse para controlar manualmente el flip
+      container.addEventListener('mousedown', (e) => {
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const width = rect.width;
+        
+        if (x < width / 2) {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentPage = flip.getCurrentPageIndex();
+          if (currentPage > 0) {
+            flip.flip(currentPage - 1, 'top');
+          }
+        } else {
+          e.preventDefault();
+          e.stopPropagation();
+          flip.flipNext('top');
+        }
+      });
+
       document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') {
           e.preventDefault();
@@ -323,7 +342,10 @@
         }
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          flip.flipNext('top');
+          const currentPage = flip.getCurrentPageIndex();
+          if (currentPage > 0) {
+            flip.flip(currentPage - 1, 'top');
+          }
         }
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
