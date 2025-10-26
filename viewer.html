@@ -263,17 +263,17 @@
     setupZoomControls(); setupDownloadButton(); applyZoom();
     loader.style.display = 'none';
 
-    // === EFECTO REALISTA DE RETROCESO ===
+    // === EFECTO REALISTA DE RETROCESO (MISMA ANIMACIÓN QUE AVANZAR) ===
     document.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight') {
         e.preventDefault();
         flip.flipNext();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        // misma animación y curvatura hacia atrás
+        // usar la misma esquina que usa el avance para que la animación sea visualmente idéntica
         const current = flip.getCurrentPageIndex();
         if (current > 0) {
-          flip.flip(current - 1, 'bottom-left');
+          flip.flip(current - 1, 'bottom-right');
         }
       } else if (e.key === '+' || e.key === '=') {
         currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP); applyZoom();
@@ -290,7 +290,7 @@
       if (e.clientX > rect.width * 0.6) flip.flipNext();
       else if (e.clientX < rect.width * 0.4) {
         const current = flip.getCurrentPageIndex();
-        if (current > 0) flip.flip(current - 1, 'bottom-left');
+        if (current > 0) flip.flip(current - 1, 'bottom-right');
       }
     });
 
@@ -301,5 +301,6 @@
 </script>
 </body>
 </html>
+
 
 
