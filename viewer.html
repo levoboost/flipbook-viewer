@@ -290,14 +290,11 @@
         allImages.push(img);
       }
 
-      // CONFIGURACIÓN PARA EL MISMO EFECTO EN AMBAS DIRECCIONES
       flip = new St.PageFlip(container, {
         width: 1000,
         height: 1413,
         size: "fixed",
-        /* --- ÚNICO CAMBIO REALIZADO --- */
-        showCover: false, 
-        /* ------------------------------ */
+        showCover: true, 
         usePortrait: true,
         flippingTime: 600,
         maxShadowOpacity: 0.3,
@@ -308,31 +305,26 @@
         maxWidth: 1000,
         maxHeight: 1413,
         autoSize: false,
-        // FORZAR EL MISMO TIPO DE FLIP EN AMBAS DIRECCIONES
-        useMouseEvents: true
+        useMouseEvents: true,
+        swipeDistance: 30
       });
 
       flip.loadFromImages(allImages);
       
-      // CONFIGURAR CONTROLES DESPUÉS DE CARGAR
       setupZoomControls();
       setupDownloadButton();
       applyZoom();
       loader.style.display = 'none';
 
-      // CONTROL DE TECLADO - USANDO LOS MÉTODOS DIRECTOS DE PAGEFLIP
       document.addEventListener('keydown', (e) => {
-        // Flecha derecha - Página siguiente
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          flip.flipNext();
+          flip.flipNext('top');
         }
-        // Flecha izquierda - Página anterior
         else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          flip.flipPrev();
+          flip.flipNext('top');
         }
-        // Controles de zoom
         else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom < MAX_ZOOM) {
@@ -355,7 +347,6 @@
         }
       });
 
-      // DOBLE CLIC PARA ZOOM
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -365,7 +356,6 @@
 
       updateZoomDisplay();
 
-      // DEBUG: Verificar que PageFlip está funcionando
       console.log('PageFlip cargado:', flip);
       console.log('Número de páginas:', allImages.length);
 
