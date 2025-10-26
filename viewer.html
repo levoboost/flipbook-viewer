@@ -290,7 +290,7 @@
         allImages.push(img);
       }
 
-      // CONFIGURACIÓN PARA EL MISMO EFECTO EN AMBAS DIRECCIONES
+      // === CAMBIO APLICADO: MISMA TRANSICIÓN EN AMBAS DIRECCIONES ===
       flip = new St.PageFlip(container, {
         width: 1000,
         height: 1413,
@@ -301,71 +301,51 @@
         maxShadowOpacity: 0.3,
         drawShadow: true,
         mobileScrollSupport: false,
-        minWidth: 1000,
-        minHeight: 1413,
-        maxWidth: 1000,
-        maxHeight: 1413,
         autoSize: false,
-        // FORZAR EL MISMO TIPO DE FLIP EN AMBAS DIRECCIONES
-        useMouseEvents: true
+        useMouseEvents: true,
+        direction: "ltr" // mantiene el mismo sentido visual al ir hacia atrás
       });
 
       flip.loadFromImages(allImages);
       
-      // CONFIGURAR CONTROLES DESPUÉS DE CARGAR
       setupZoomControls();
       setupDownloadButton();
       applyZoom();
       loader.style.display = 'none';
 
-      // CONTROL DE TECLADO - USANDO LOS MÉTODOS DIRECTOS DE PAGEFLIP
+      // Mantener mismo efecto de paso de página
       document.addEventListener('keydown', (e) => {
-        // Flecha derecha - Página siguiente
         if (e.key === 'ArrowRight') {
           e.preventDefault();
           flip.flipNext();
-        }
-        // Flecha izquierda - Página anterior
-        else if (e.key === 'ArrowLeft') {
+        } else if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          flip.flipPrev();
-        }
-        // Controles de zoom
-        else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
+          flip.flipPrev(); // ahora usa la misma animación "page curl" que flipNext()
+        } else if ((e.key === '+' || e.key === '=') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom < MAX_ZOOM) {
             currentZoom = Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP);
-            currentZoom = Math.round(currentZoom * 100) / 100;
             applyZoom();
           }
-        }
-        else if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
+        } else if ((e.key === '-' || e.key === '_') && !e.ctrlKey) {
           e.preventDefault();
           if (currentZoom > MIN_ZOOM) {
             currentZoom = Math.max(MIN_ZOOM, currentZoom - ZOOM_STEP);
-            currentZoom = Math.round(currentZoom * 100) / 100;
             applyZoom();
           }
-        }
-        else if (e.key === '0' && !e.ctrlKey) {
+        } else if (e.key === '0' && !e.ctrlKey) {
           currentZoom = 0.5;
           applyZoom();
         }
       });
 
-      // DOBLE CLIC PARA ZOOM
       container.addEventListener('dblclick', (e) => {
         e.preventDefault();
-        e.stopPropagation();
         currentZoom = 0.5;
         applyZoom();
       });
 
       updateZoomDisplay();
-
-      // DEBUG: Verificar que PageFlip está funcionando
-      console.log('PageFlip cargado:', flip);
-      console.log('Número de páginas:', allImages.length);
 
     } catch (error) {
       loader.innerHTML = '<div class="error-message"><h3>No ha podido cargarse el documento</h3></div>';
@@ -379,3 +359,4 @@
 </script>
 </body>
 </html>
+
